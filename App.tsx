@@ -7,18 +7,31 @@ import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
-// Importe outras telas conforme necessário
 
-const Stack = createStackNavigator();
+import { RootStackParamList } from './types/navigation';
+
+const Stack = createStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }}/>
-        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }}/>
-        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }}/>
-        {/* Adicione outras telas aqui */}
+        <Stack.Screen 
+          name="Login" 
+          component={LoginScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Register" 
+          component={RegisterScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Home" 
+          component={HomeScreen} 
+          options={{ headerShown: false }}
+        />
+        {/* Adicione outras telas aqui conforme necessário */}
       </Stack.Navigator>
     </NavigationContainer>
   );

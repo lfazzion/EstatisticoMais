@@ -1,20 +1,61 @@
-// HomeScreen.tsx
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { auth } from '../firebaseConfig';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { signOut } from 'firebase/auth';
+import { RootStackParamList } from '../types/navigation';
 
-export default function HomeScreen({ navigation }: any) {
+export default function HomeScreen() {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+
+  const logoutUser = () => {
+    signOut(auth)
+      .then(() => {
+        navigation.replace('Login');
+      })
+      .catch(error => {
+        console.error('Erro ao sair:', error);
+      });
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Bem-vindo ao Estatístico+</Text>
-      {/* Implemente os elementos de gamificação aqui */}
-      <Button title="Perfil" onPress={() => navigation.navigate('Profile')} />
-      <Button title="Exercícios" onPress={() => navigation.navigate('Exercise')} />
-      {/* Se o usuário for professor, mostrar opção para adicionar exercícios */}
-      <Button title="Adicionar Exercício" onPress={() => navigation.navigate('Teacher')} />
+      <TouchableOpacity style={styles.button} onPress={logoutUser}>
+        <Text style={styles.buttonText}>Sair</Text>
+      </TouchableOpacity>
+      {/* Adicione outros componentes ou botões para navegar para outras telas */}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // estilos aqui
+  // Estilos básicos para o frontend
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  title: {
+    fontSize: 28,
+    marginBottom: 40,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+  },
+  button: {
+    width: '60%',
+    height: 50,
+    backgroundColor: '#f44336',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 30,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 18,
+  },
 });

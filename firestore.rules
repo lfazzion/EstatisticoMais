@@ -1,9 +1,13 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Regras para a coleção 'users'
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // Regras para outras coleções (ajuste conforme necessário)
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }
