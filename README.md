@@ -9,8 +9,7 @@ Bem-vindo ao **Estatístico+**, um aplicativo educativo para o ensino de estatí
 - Tecnologias Utilizadas
 - Pré-requisitos
 - Instalação
-- Execução
-<!-- - Compilação para Produção -->
+- Execução <!-- - Compilação para Produção -->
 - Contribuição
 - Licença
 
@@ -43,8 +42,6 @@ O Estatístico+ é um aplicativo móvel desenvolvido em React Native com TypeScr
 
 - **Node.js** (versão LTS recomendada)
 - **Git** (para clonar o repositório)
-- **Expo Go** (para emulação na tela do smartphone)
-- **Android Studio** ou **Xcode** (para emulação em computadores)
 
 ## Instalação
 
@@ -76,6 +73,7 @@ npm install
   - Escaneie o QR Code exibido no Expo Developer Tools.
 - **Emulador Android:**
   - Certifique-se de ter o Android Studio e um dispositivo configurado.
+  - Abra o diretório do projeto no Android Studio
   - Inicialize o dispositivo emulado em Device Manager.
   - No terminal do Android Studio, execute o comando `npx expo start`.
   - Pressione `a` para abrir o App no dispositivo emulado.
