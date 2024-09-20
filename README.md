@@ -10,7 +10,7 @@ Bem-vindo ao **Estatístico+**, um aplicativo educativo para o ensino de estatí
 - Pré-requisitos
 - Instalação
 - Execução
-- Compilação para Produção
+<!-- - Compilação para Produção -->
 - Contribuição
 - Licença
 
@@ -43,8 +43,8 @@ O Estatístico+ é um aplicativo móvel desenvolvido em React Native com TypeScr
 
 - **Node.js** (versão LTS recomendada)
 - **Git** (para clonar o repositório)
-- **Expo CLI** (via npx)
-- **Conta no Firebase** (para obter as credenciais)
+- **Expo Go** (para emulação na tela do smartphone)
+- **Android Studio** ou **Xcode** (para emulação em computadores)
 
 ## Instalação
 
@@ -68,23 +68,21 @@ npm install
 
 ## Execução
 
-**1. Iniciar o Servidor de Desenvolvimento**
-
-```bash
-npx expo start
-```
-
-**2. Executar no Dispositivo Físico ou Emulador**
+**Executar em Dispositivo Físico ou Emulador**
 
 - **Dispositivo Físico:**
   - Instale o aplicativo Expo Go na App Store ou Google Play Store.
+  - Com o terminal aberto no diretório do App, execute o comando `npx expo start`.
   - Escaneie o QR Code exibido no Expo Developer Tools.
 - **Emulador Android:**
-  - Certifique-se de ter o Android Studio e um AVD configurado.
+  - Certifique-se de ter o Android Studio e um dispositivo configurado.
+  - Inicialize o dispositivo emulado em Device Manager.
+  - No terminal do Android Studio, execute o comando `npx expo start`.
+  - Pressione `a` para abrir o App no dispositivo emulado.
 - **Simulador iOS:**
   - Disponível apenas no macOS com Xcode instalado.
 
-## Compilação para Produção
+<!--## Compilação para Produção
 
 Para gerar os arquivos de instalação (APK para Android ou IPA para iOS), você precisará configurar o Expo Application Services (EAS).
 
@@ -120,7 +118,7 @@ eas build -p android --profile production
 eas build -p ios --profile production
 ```
 
-**Nota:** Para iOS, você precisará de uma conta de desenvolvedor Apple.
+**Nota:** Para iOS, você precisará de uma conta de desenvolvedor Apple.-->
 
 ## Contribuição
 
