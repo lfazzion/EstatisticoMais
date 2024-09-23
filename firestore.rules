@@ -3,7 +3,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Regras para a coleção 'users'
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null 
+                         && request.auth.uid == userId 
+                         && request.auth.token.email_verified == true;
     }
     // Regras para outras coleções (ajuste conforme necessário)
     match /{document=**} {

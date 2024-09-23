@@ -1,37 +1,63 @@
+// screens/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { auth, firestore } from '../firebaseConfig';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useNavigation } from '@react-navigation/native';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
+import { Alert } from 'react-native';
 
 export default function RegisterScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const [error, setError] = useState('');
+
   const registerUser = () => {
     if (email === '' || password === '') {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos.');
+      setError('Por favor, preencha todos os campos.');
       return;
     }
 
     createUserWithEmailAndPassword(auth, email, password)
       .then(async (userCredential) => {
         // Registro bem-sucedido
+        setError('');
         const user = userCredential.user;
-        // Opcional: adicionar dados adicionais no Firestore
         await setDoc(doc(firestore, 'users', user.uid), {
           email: user.email,
           createdAt: serverTimestamp(),
         });
-        Alert.alert('Sucesso', 'Usuário registrado com sucesso!');
-        navigation.navigate('Login');
+        // Enviar email de verificação
+        await sendEmailVerification(user);
+        // Exibir alerta informando que o email de verificação foi enviado
+        Alert.alert(
+          'Registro bem-sucedido',
+          'Um email de verificação foi enviado para o seu email. Verifique sua caixa de entrada para ativar sua conta.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login'),
+            },
+          ],
+          { cancelable: false }
+        );
       })
       .catch(error => {
-        Alert.alert('Erro', error.message);
+        const errorCode = error.code;
+        if (errorCode === 'auth/email-already-in-use') {
+          setError('Este email já está cadastrado. Utilize outro email.');
+        } else if (errorCode === 'auth/invalid-email') {
+          setError('Email inválido. Verifique o email digitado.');
+        } else if (errorCode === 'auth/weak-password') {
+          setError('A senha deve ter pelo menos 6 caracteres.');
+        } else {
+          setError('Ocorreu um erro ao registrar. Tente novamente mais tarde.');
+        }
       });
   };
 
@@ -55,6 +81,9 @@ export default function RegisterScreen() {
         onChangeText={password => setPassword(password)}
         value={password}
       />
+      {error !== '' && (
+        <Text style={styles.errorText}>{error}</Text>
+      )}
       <TouchableOpacity style={styles.button} onPress={registerUser}>
         <Text style={styles.buttonText}>Registrar</Text>
       </TouchableOpacity>
@@ -66,8 +95,8 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Estilos básicos para o frontend
   container: {
+    // Seu estilo existente
     flex: 1,
     backgroundColor: '#fff',
     justifyContent: 'center',
@@ -107,5 +136,10 @@ const styles = StyleSheet.create({
     color: '#4caf50',
     fontSize: 16,
     marginTop: 10,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });

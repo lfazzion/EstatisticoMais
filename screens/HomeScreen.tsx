@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { signOut } from 'firebase/auth';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
 
 export default function HomeScreen() {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const logoutUser = () => {
     signOut(auth)
