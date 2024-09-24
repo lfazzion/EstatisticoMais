@@ -63,6 +63,12 @@ cd EstatisticoMais
 npm install
 ```
 
+**4. Instale o Expo CLI**
+
+```bash
+npm install -g expo-cli
+```
+
 ## Execução
 
 **Executar em Dispositivo Físico ou Emulador**
@@ -78,7 +84,46 @@ npm install
   - No terminal do Android Studio, execute o comando `npx expo start`.
   - Pressione `a` para abrir o App no dispositivo emulado.
 - **Simulador iOS:**
-  - Disponível apenas no macOS com Xcode instalado.
+  - **Pré requisitos:**
+    - Mac com macOS instalado.
+    - Xcode (versão 14 ou superior).
+    - Xcode Command Line Tools.
+  - **1. Instale o CocoaPods**
+    ```bash
+    brew install cocoapods
+    ```
+  - **2. Ejete o Projeto para o Bare Workflow**
+    ```bash
+    npx expo prebuild --platform ios
+    ```
+  - **3. Instale as Depêndencias Nativas**
+    ```bash
+    cd ios
+    ```
+    ```bash
+    pod install
+    ```
+  - **4. Abra o Projeto no Xcode**
+    ```bash
+    open EstatisticoMais.xcworkspace
+    ```
+  - **5. Configure o assinatura do aplicativo**
+    - No Xcode, clique no projeto _EstatisticoMais_ no painel esquerdo.
+    - Selecione o _target_ EstatisticoMais.
+    - Vá para a aba _Signing & Capabilities_.
+    - Em _Team_, selecione sua conta pessoal (pode ser seu Apple ID).
+    - Certifique-se de que o _Bundle Identifier_ é único (por exemplo, `com.seunome.EstatisticoMais`).
+  - **6. Inicie o Servidor**
+    - Inicie o Metro Bundler no diretório do Projeto:
+      ```bash
+      cd ..
+      ```
+      ```bash
+      npx react-native start
+      ```
+    - Mantenha este terminal aberto enquanto o aplicativo estiver em execução.
+  - **7. Execute o Aplicativo no Xcode**
+    - No Xcode, clique no botão Run (ícone de Play) para compilar e executar o aplicativo no simulador selecionado.
 
 <!--## Compilação para Produção
 
