@@ -7,6 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
+import PasswordResetScreen from './screens/PasswordResetScreen';
 
 import { RootStackParamList } from './types/navigation';
 
@@ -29,6 +30,11 @@ export default function App() {
         <Stack.Screen 
           name="Home" 
           component={HomeScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="PasswordReset" 
+          component={PasswordResetScreen} 
           options={{ headerShown: false }}
         />
         {/* Adicione outras telas aqui conforme necessário */}

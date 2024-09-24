@@ -1,14 +1,13 @@
 // screens/LoginScreen.tsx
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Pressable } from 'react-native';
 import { auth } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
 
-// **Importe Alert do 'react-native'**
-import { Alert } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function LoginScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
@@ -17,6 +16,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const [error, setError] = useState('');
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
 
   const loginUser = () => {
     if (email === '' || password === '') {
@@ -67,19 +67,31 @@ export default function LoginScreen() {
         onChangeText={email => setEmail(email)}
         value={email}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        onChangeText={password => setPassword(password)}
-        value={password}
-      />
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Senha"
+          placeholderTextColor="#aaa"
+          secureTextEntry={secureTextEntry}
+          onChangeText={password => setPassword(password)}
+          value={password}
+        />
+        <Pressable onPress={() => setSecureTextEntry(!secureTextEntry)}>
+          <Ionicons
+            name={secureTextEntry ? 'eye-off' : 'eye'}
+            size={24}
+            color="#aaa"
+          />
+        </Pressable>
+      </View>
       {error !== '' && (
         <Text style={styles.errorText}>{error}</Text>
       )}
       <TouchableOpacity style={styles.button} onPress={loginUser}>
         <Text style={styles.buttonText}>Entrar</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.navigate('PasswordReset')}>
+        <Text style={styles.linkText}>Esqueceu a senha?</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('Register')}>
         <Text style={styles.linkText}>Não tem uma conta? Registre-se</Text>
@@ -111,6 +123,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 16,
     marginBottom: 15,
+    color: '#333',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    width: '100%',
+    height: 50,
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 16,
     color: '#333',
   },
   button: {
