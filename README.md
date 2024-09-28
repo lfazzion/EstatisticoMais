@@ -79,7 +79,8 @@ npm install
   - Com o smartphone, escaneie o QR Code exibido no terminal.
 
 - **Emulador Android:**
-  - Certifique-se de ter o [Android Studio](https://developer.android.com/studio?hl=pt-br) instalado e um dispositivo configurado.
+  - **Pré-requisitos:**
+    - [Android Studio](https://developer.android.com/studio?hl=pt-br) instalado e um dispositivo configurado.
   - Abra o diretório do projeto no Android Studio
   - Inicialize o dispositivo emulado em **Device Manager**.
   - No terminal do Android Studio, execute o comando:
@@ -88,9 +89,8 @@ npm install
     ```
   - Pressione `a` para abrir o App no dispositivo emulado.
 - **Simulador iOS:**
-  - **Pré-requisitos:**
-    - Mac com macOS instalado.
-    - [Xcode](https://apps.apple.com/br/app/xcode/id497799835?mt=12) intalado.
+  - **Pré-requisito:**
+    - MacOS com [Xcode](https://apps.apple.com/br/app/xcode/id497799835?mt=12) instalado.
   - Com o terminal aberto no diretório do Projeto, execute:
     ```bash
     npx expo start
