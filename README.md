@@ -63,67 +63,39 @@ cd EstatisticoMais
 npm install
 ```
 
-**4. Instale o Expo CLI**
-
-```bash
-npm install -g expo-cli
-```
-
 ## Execução
 
 **Executar em Dispositivo Físico ou Emulador**
 
 - **Dispositivo Físico:**
-  - Instale o aplicativo Expo Go na App Store ou Google Play Store.
-  - Com o terminal aberto no diretório do App, execute o comando `npx expo start`.
-  - Escaneie o QR Code exibido no Expo Developer Tools.
+
+  - Instale o aplicativo Expo Go no smartphone:
+    - Android: [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent&hl=pt_BR&pli=1)
+    - iOS: [App Store](https://apps.apple.com/br/app/expo-go/id982107779)
+  - Com o terminal aberto na **pasta do App**, execute o comando:
+    ```bash
+    npx expo start
+    ```
+  - Com o smartphone, escaneie o QR Code exibido no terminal.
+
 - **Emulador Android:**
-  - Certifique-se de ter o Android Studio e um dispositivo configurado.
+  - Certifique-se de ter o [Android Studio](https://developer.android.com/studio?hl=pt-br) instalado e um dispositivo configurado.
   - Abra o diretório do projeto no Android Studio
-  - Inicialize o dispositivo emulado em Device Manager.
-  - No terminal do Android Studio, execute o comando `npx expo start`.
+  - Inicialize o dispositivo emulado em **Device Manager**.
+  - No terminal do Android Studio, execute o comando:
+    ```bash
+    npx expo start
+    ```
   - Pressione `a` para abrir o App no dispositivo emulado.
 - **Simulador iOS:**
-  - **Pré requisitos:**
+  - **Pré-requisitos:**
     - Mac com macOS instalado.
-    - Xcode (versão 14 ou superior).
-    - Xcode Command Line Tools.
-  - **1. Instale o CocoaPods**
+    - [Xcode](https://apps.apple.com/br/app/xcode/id497799835?mt=12) intalado.
+  - Com o terminal aberto no diretório do Projeto, execute:
     ```bash
-    brew install cocoapods
+    npx expo start
     ```
-  - **2. Ejete o Projeto para o Bare Workflow**
-    ```bash
-    npx expo prebuild --platform ios
-    ```
-  - **3. Instale as Depêndencias Nativas**
-    ```bash
-    cd ios
-    ```
-    ```bash
-    pod install
-    ```
-  - **4. Abra o Projeto no Xcode**
-    ```bash
-    open EstatisticoMais.xcworkspace
-    ```
-  - **5. Configure o assinatura do aplicativo**
-    - No Xcode, clique no projeto _EstatisticoMais_ no painel esquerdo.
-    - Selecione o _target_ EstatisticoMais.
-    - Vá para a aba _Signing & Capabilities_.
-    - Em _Team_, selecione sua conta pessoal (pode ser seu Apple ID).
-    - Certifique-se de que o _Bundle Identifier_ é único (por exemplo, `com.seunome.EstatisticoMais`).
-  - **6. Inicie o Servidor**
-    - Inicie o Metro Bundler no diretório do Projeto:
-      ```bash
-      cd ..
-      ```
-      ```bash
-      npx react-native start
-      ```
-    - Mantenha este terminal aberto enquanto o aplicativo estiver em execução.
-  - **7. Execute o Aplicativo no Xcode**
-    - No Xcode, clique no botão Run (ícone de Play) para compilar e executar o aplicativo no simulador selecionado.
+  - Pressione `i` para abrir o App no iPhone simulado.
 
 <!--## Compilação para Produção
 
