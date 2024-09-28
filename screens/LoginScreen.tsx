@@ -1,9 +1,10 @@
 // screens/LoginScreen.tsx
-import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Pressable } from 'react-native';
-import { auth } from '../firebaseConfig';
+import React, { useState, useEffect } from 'react';
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { auth, firestore } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
 
@@ -17,6 +18,7 @@ export default function LoginScreen() {
 
   const [error, setError] = useState('');
   const [secureTextEntry, setSecureTextEntry] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const loginUser = () => {
     if (email === '' || password === '') {
@@ -24,13 +26,33 @@ export default function LoginScreen() {
       return;
     }
 
+    setLoading(true);
+
     signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
+      .then(async (userCredential) => {
         const user = userCredential.user;
         if (user.emailVerified) {
-          // Login bem-sucedido
-          setError('');
-          navigation.navigate('Home');
+          // Obter dados do usuário no Firestore
+          const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            if (userData.userType === 'Professor' && userData.approvalStatus === 'pendente') {
+              setError('Sua conta de professor está aguardando aprovação.');
+              setLoading(false);
+              return;
+            }
+
+            // Redirecionar com base no tipo de usuário
+            if (userData.userType === 'Aluno') {
+              navigation.navigate('AlunoHome');
+            } else if (userData.userType === 'Professor') {
+              navigation.navigate('ProfessorHome');
+            } else {
+              setError('Tipo de usuário desconhecido.');
+            }
+          } else {
+            setError('Dados do usuário não encontrados.');
+          }
         } else {
           setError('Email não verificado. Verifique seu email para ativar a conta.');
           // Reenviar email de verificação (opcional)
@@ -42,8 +64,10 @@ export default function LoginScreen() {
               console.error('Erro ao reenviar email de verificação:', error);
             });
         }
+        setLoading(false);
       })
       .catch(error => {
+        setLoading(false);
         const errorCode = error.code;
         if (errorCode === 'auth/user-not-found') {
           setError('Usuário não encontrado. Verifique o email digitado.');
@@ -87,9 +111,13 @@ export default function LoginScreen() {
       {error !== '' && (
         <Text style={styles.errorText}>{error}</Text>
       )}
-      <TouchableOpacity style={styles.button} onPress={loginUser}>
-        <Text style={styles.buttonText}>Entrar</Text>
-      </TouchableOpacity>
+      {loading ? (
+        <ActivityIndicator size="large" color="#4caf50" />
+      ) : (
+        <TouchableOpacity style={styles.button} onPress={loginUser}>
+          <Text style={styles.buttonText}>Entrar</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity onPress={() => navigation.navigate('PasswordReset')}>
         <Text style={styles.linkText}>Esqueceu a senha?</Text>
       </TouchableOpacity>

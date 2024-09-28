@@ -1,6 +1,7 @@
 // screens/RegisterScreen.tsx
 import React, { useState } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, Pressable } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { auth, firestore } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
@@ -22,6 +23,8 @@ export default function RegisterScreen() {
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [secureConfirmEntry, setSecureConfirmEntry] = useState(true);
 
+  const [userType, setUserType] = useState<'Aluno' | 'Professor'>('Aluno');
+
   const registerUser = () => {
     if (email === '' || password === '' || confirmPassword === '') {
       setError('Por favor, preencha todos os campos.');
@@ -38,8 +41,13 @@ export default function RegisterScreen() {
         // Registro bem-sucedido
         setError('');
         const user = userCredential.user;
+        // Definir status de aprovação
+        const approvalStatus = userType === 'Professor' ? 'pendente' : 'aprovado';
+        
         await setDoc(doc(firestore, 'users', user.uid), {
           email: user.email,
+          userType: userType,
+          approvalStatus: approvalStatus,
           createdAt: serverTimestamp(),
         });
         // Enviar email de verificação
@@ -117,6 +125,16 @@ export default function RegisterScreen() {
           />
         </Pressable>
       </View>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={userType}
+          onValueChange={(itemValue) => setUserType(itemValue)}
+          style={styles.picker}
+        >
+          <Picker.Item label="Aluno" value="Aluno" />
+          <Picker.Item label="Professor" value="Professor" />
+        </Picker>
+      </View>
       {error !== '' && (
         <Text style={styles.errorText}>{error}</Text>
       )}
@@ -137,6 +155,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+  },
+  pickerContainer: {
+    width: '100%',
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  picker: {
+    width: '100%',
+    height: 50,
+    color: '#333',
   },
   title: {
     fontSize: 32,

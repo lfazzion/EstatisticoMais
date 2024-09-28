@@ -72,7 +72,7 @@ npm install
   - Instale o aplicativo Expo Go no smartphone:
     - Android: [Google Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent&hl=pt_BR&pli=1)
     - iOS: [App Store](https://apps.apple.com/br/app/expo-go/id982107779)
-  - Com o terminal aberto na **pasta do App**, execute o comando:
+  - Com o terminal aberto na **pasta do projeto**, execute o comando:
     ```bash
     npx expo start
     ```
@@ -87,7 +87,7 @@ npm install
     ```bash
     npx expo start
     ```
-  - Pressione `a` para abrir o App no dispositivo emulado.
+  - Pressione `a` para abrir o aplicativo no dispositivo emulado.
 - **Simulador iOS:**
   - **Pré-requisito:**
     - MacOS com [Xcode](https://apps.apple.com/br/app/xcode/id497799835?mt=12) instalado.
@@ -95,7 +95,7 @@ npm install
     ```bash
     npx expo start
     ```
-  - Pressione `i` para abrir o App no iPhone simulado.
+  - Pressione `i` para abrir o aplicativo no iPhone simulado.
 
 <!--## Compilação para Produção
 
@@ -142,3 +142,13 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir issues e pull re
 ## Licença
 
 Este projeto está sob a licença MIT.
+
+## Observações Adicionais
+
+- Mantenha as dependências do projeto atualizadas para garantir compatibilidade e segurança.
+- Consulte as documentações do React Native e do Firebase para mais informações.
+<!-- - Para dúvidas ou suporte, entre em contato pelo email: lowellfazzion@gmail.com-->
+
+## Agradecimentos
+
+Agradecemos a todos que contribuíram para o desenvolvimento deste projeto.
