@@ -1,60 +1,48 @@
 // screens/AlunoHomeScreen.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { auth } from '../firebaseConfig';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { signOut } from 'firebase/auth';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList } from '../types/navigation';
+import Header from '../components/Header';
+import { useNavigation } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { AlunoDrawerParamList } from '../types/navigation';
 
 export default function AlunoHomeScreen() {
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-
-  const logoutUser = () => {
-    signOut(auth)
-      .then(() => {
-        navigation.replace('Login');
-      })
-      .catch(error => {
-        console.error('Erro ao sair:', error);
-      });
-  };
+  const navigation = useNavigation<DrawerNavigationProp<AlunoDrawerParamList>>();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Olá Aluno! Seja bem-vindo ao Estatístico+</Text>
-      <TouchableOpacity style={styles.button} onPress={logoutUser}>
-        <Text style={styles.buttonText}>Sair</Text>
-      </TouchableOpacity>
-      {/* Adicione outros componentes ou botões para navegar para outras telas */}
+      <Header title="Área do Aluno" />
+      <View style={styles.content}>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => navigation.navigate('ExerciseList')} // Navega para a tela de lista de exercícios
+        >
+          <Text style={styles.buttonText}>Exercícios Disponíveis</Text>
+        </TouchableOpacity>
+        {/* Adicione outras funcionalidades, como visualização de progresso */}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Estilos básicos para o frontend
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 28,
-    marginBottom: 40,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
+  content: {
+    flex: 1,
+    padding: 20,
+    alignItems: 'center',
   },
   button: {
-    width: '60%',
+    width: '100%',
     height: 50,
-    backgroundColor: '#f44336',
+    backgroundColor: '#4caf50',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
+    marginVertical: 10,
   },
   buttonText: {
     color: '#fff',

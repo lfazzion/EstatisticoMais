@@ -44,11 +44,15 @@ export default function LoginScreen() {
 
             // Redirecionar com base no tipo de usuário
             if (userData.userType === 'Aluno') {
-              navigation.navigate('AlunoHome');
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'AlunoDrawer' }],
+              });
             } else if (userData.userType === 'Professor') {
-              navigation.navigate('ProfessorHome');
-            } else {
-              setError('Tipo de usuário desconhecido.');
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'ProfessorDrawer' }],
+              });
             }
           } else {
             setError('Dados do usuário não encontrados.');
