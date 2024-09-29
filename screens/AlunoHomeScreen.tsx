@@ -1,6 +1,7 @@
 // screens/AlunoHomeScreen.tsx
+
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, ScrollView } from 'react-native';
 import Header from '../components/Header';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -10,18 +11,37 @@ export default function AlunoHomeScreen() {
   const navigation = useNavigation<DrawerNavigationProp<AlunoDrawerParamList>>();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
       <Header title="Área do Aluno" />
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <TouchableOpacity 
           style={styles.button} 
-          onPress={() => navigation.navigate('ExerciseList')} // Navega para a tela de lista de exercícios
+          onPress={() => navigation.navigate('ExerciseList')}
         >
           <Text style={styles.buttonText}>Exercícios Disponíveis</Text>
         </TouchableOpacity>
-        {/* Adicione outras funcionalidades, como visualização de progresso */}
-      </View>
-    </View>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => navigation.navigate('Games')}
+        >
+          <Text style={styles.buttonText}>Jogos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => navigation.navigate('Videos')}
+        >
+          <Text style={styles.buttonText}>Vídeos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => navigation.navigate('ReadingMaterials')}
+        >
+          <Text style={styles.buttonText}>Materiais de Leitura</Text>
+        </TouchableOpacity>
+        {/* Adicione outras funcionalidades conforme necessário */}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -29,11 +49,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    // Remova qualquer padding ou margin top
   },
   content: {
-    flex: 1,
     padding: 20,
     alignItems: 'center',
+    // Adicione um paddingTop para evitar sobreposição
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   button: {
     width: '100%',

@@ -1,8 +1,9 @@
 // screens/ExerciseDetailScreen.tsx
+
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, StatusBar, Platform } from 'react-native';
 import Header from '../components/Header';
-import { firestore } from '../firebaseConfig';
+import { firestore, auth } from '../firebaseConfig';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
@@ -42,13 +43,14 @@ export default function ExerciseDetailScreen() {
 
     const isCorrect = selectedOption === exercise.correctOption;
 
-    // Salvar resultado (opcional)
+    // Salvar resultado
     try {
+      const user = auth.currentUser;
       await addDoc(collection(firestore, 'results'), {
         exerciseId: exerciseId,
         isCorrect: isCorrect,
         answeredAt: serverTimestamp(),
-        // Adicione o UID do usuário, se desejar
+        userId: user ? user.uid : null,
       });
     } catch (error) {
       console.error('Erro ao salvar resultado:', error);
@@ -67,18 +69,20 @@ export default function ExerciseDetailScreen() {
 
   if (!exercise) {
     return (
-      <View style={styles.container}>
-        <Header title="Carregando..." />
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+        <Header title="Carregando..." showBackButton />
         <View style={styles.content}>
           <Text>Carregando exercício...</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Header title="Detalhes do Exercício" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+      <Header title="Detalhes do Exercício" showBackButton />
       <View style={styles.content}>
         <Text style={styles.question}>{exercise.question}</Text>
         {exercise.options.map((option: string, index: number) => (
@@ -108,7 +112,7 @@ export default function ExerciseDetailScreen() {
           </Text>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -116,9 +120,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    // Remova qualquer padding ou margin top
   },
   content: {
+    flex: 1,
     padding: 20,
+    // Adicione um paddingTop para evitar sobreposição
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   question: {
     fontSize: 20,

@@ -1,7 +1,7 @@
 // components/Header.tsx
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -27,22 +27,26 @@ export default function Header({ title, showBackButton = false }: HeaderProps) {
   };
 
   return (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={openMenu}>
-        <Ionicons name={showBackButton ? 'arrow-back' : 'menu'} size={28} color="#fff" />
-      </TouchableOpacity>
-      <Text style={styles.headerText}>{title}</Text>
-      <TouchableOpacity onPress={openProfile}>
-        <Ionicons name="person-circle" size={28} color="#fff" />
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={openMenu}>
+          <Ionicons name={showBackButton ? 'arrow-back' : 'menu'} size={28} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerText}>{title}</Text>
+        <TouchableOpacity onPress={openProfile}>
+          <Ionicons name="person-circle" size={28} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: '#4caf50',
+  },
   header: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0, // Ajuste para a barra de status
-    height: Platform.OS === 'android' ? 60 + StatusBar.currentHeight! : 60,
+    height: 60,
     backgroundColor: '#4caf50',
     flexDirection: 'row',
     alignItems: 'center',

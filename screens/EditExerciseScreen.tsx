@@ -1,48 +1,68 @@
-// screens/AddExerciseScreen.tsx
+// screens/EditExerciseScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, ScrollView, Alert, SafeAreaView, StatusBar, Platform } from 'react-native';
 import Header from '../components/Header';
-import { firestore, auth } from '../firebaseConfig';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { firestore } from '../firebaseConfig';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { RootStackParamList } from '../types/navigation';
 
-export default function AddExerciseScreen() {
+type EditExerciseRouteProp = RouteProp<RootStackParamList, 'EditExercise'>;
+
+export default function EditExerciseScreen() {
+  const route = useRoute<EditExerciseRouteProp>();
+  const { exerciseId } = route.params;
+
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
   const [error, setError] = useState('');
 
-  const addExercise = async () => {
+  useEffect(() => {
+    const fetchExercise = async () => {
+      try {
+        const docRef = doc(firestore, 'exercises', exerciseId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setQuestion(data.question);
+          setOptions(data.options);
+          setCorrectOption(data.correctOption);
+        } else {
+          console.error('Exercício não encontrado');
+        }
+      } catch (error) {
+        console.error('Erro ao buscar exercício:', error);
+      }
+    };
+    fetchExercise();
+  }, [exerciseId]);
+
+  const updateExercise = async () => {
     if (question === '' || options.some(option => option === '') || correctOption === null) {
       setError('Por favor, preencha todos os campos e selecione a opção correta.');
       return;
     }
 
     try {
-      const user = auth.currentUser;
-      await addDoc(collection(firestore, 'exercises'), {
+      const exerciseRef = doc(firestore, 'exercises', exerciseId);
+      await updateDoc(exerciseRef, {
         question,
         options,
         correctOption,
-        createdAt: serverTimestamp(),
-        createdBy: user ? user.uid : null,
       });
-      Alert.alert('Sucesso', 'Exercício adicionado com sucesso.');
-      // Limpar campos
-      setQuestion('');
-      setOptions(['', '', '', '']);
-      setCorrectOption(null);
-      setError('');
+      Alert.alert('Sucesso', 'Exercício atualizado com sucesso.');
     } catch (error) {
-      console.error('Erro ao adicionar exercício:', error);
-      setError('Ocorreu um erro ao adicionar o exercício. Tente novamente.');
+      console.error('Erro ao atualizar exercício:', error);
+      setError('Ocorreu um erro ao atualizar o exercício. Tente novamente.');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
-      <Header title="Adicionar Exercício" showBackButton />
+      <Header title="Editar Exercício" showBackButton />
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Pergunta:</Text>
         <TextInput
@@ -85,8 +105,8 @@ export default function AddExerciseScreen() {
         {error !== '' && (
           <Text style={styles.errorText}>{error}</Text>
         )}
-        <TouchableOpacity style={styles.button} onPress={addExercise}>
-          <Text style={styles.buttonText}>Salvar Exercício</Text>
+        <TouchableOpacity style={styles.button} onPress={updateExercise}>
+          <Text style={styles.buttonText}>Atualizar Exercício</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -94,6 +114,7 @@ export default function AddExerciseScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Utilize os mesmos estilos do AddExerciseScreen
   container: {
     flex: 1,
     backgroundColor: '#fff',

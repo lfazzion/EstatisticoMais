@@ -1,6 +1,7 @@
 // screens/ProfessorHomeScreen.tsx
+
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, ScrollView } from 'react-native';
 import Header from '../components/Header';
 import { useNavigation } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
@@ -10,18 +11,25 @@ export default function ProfessorHomeScreen() {
   const navigation = useNavigation<DrawerNavigationProp<ProfessorDrawerParamList>>();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
       <Header title="Área do Professor" />
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <TouchableOpacity 
           style={styles.button} 
-          onPress={() => navigation.navigate('AddExercise')} // Navega para a tela de adicionar exercício
+          onPress={() => navigation.navigate('AddExercise')}
         >
           <Text style={styles.buttonText}>Adicionar Exercício</Text>
         </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.button} 
+          onPress={() => navigation.navigate('ProfessorExercises')}
+        >
+          <Text style={styles.buttonText}>Meus Exercícios</Text>
+        </TouchableOpacity>
         {/* Adicione outras funcionalidades, como visualização de exercícios */}
-      </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -29,11 +37,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    // Remova qualquer padding ou margin top
   },
   content: {
-    flex: 1,
     padding: 20,
     alignItems: 'center',
+    // Adicione um paddingTop para evitar sobreposição
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   button: {
     width: '100%',
