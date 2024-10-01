@@ -1,33 +1,45 @@
+// firestore.rules
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     // Regras para a coleção de usuários
     match /users/{userId} {
       allow create: if request.auth != null;
-      allow read, update: if request.auth.uid == userId;
+      allow read: if isAllowedToReadUserDoc(userId);
+      allow update: if request.auth.uid == userId;
       allow delete: if false;
+
+      function isAllowedToReadUserDoc(userId) {
+        return request.auth.uid == userId || (
+          resource.data.userType == 'Professor' &&
+          resource.data.approvalStatus == 'aprovado'
+        );
+      }
     }
+
     // Regras para a coleção de resultados
     match /results/{resultId} {
       allow create: if request.auth != null;
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if request.auth.uid == resource.data.userId;
       allow update, delete: if false;
     }
+
     // Regras para a coleção de exercícios
     match /exercises/{exerciseId} {
       allow read: if request.auth != null;
       allow create: if isProfessor(request.auth.uid);
       allow update, delete: if isExerciseOwner(request.auth.uid, resource);
-    }
 
-    function isProfessor(userId) {
-      let userDoc = get(/databases/$(database)/documents/users/$(userId));
-      return userDoc.data.userType == 'Professor' &&
-             userDoc.data.approvalStatus == 'aprovado';
-    }
+      function isProfessor(userId) {
+        return get(/databases/$(database)/documents/users/$(userId)).data.userType == 'Professor' &&
+               get(/databases/$(database)/documents/users/$(userId)).data.approvalStatus == 'aprovado';
+      }
 
-    function isExerciseOwner(userId, resource) {
-      return isProfessor(userId) && resource.data.createdBy == userId;
+      function isExerciseOwner(userId, resource) {
+        return isProfessor(userId) && resource.data.createdBy == userId;
+      }
     }
   }
 }

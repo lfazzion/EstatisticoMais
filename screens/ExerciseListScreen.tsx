@@ -12,7 +12,7 @@ import {
   StatusBar,
 } from 'react-native';
 import Header from '../components/Header';
-import { firestore } from '../firebaseConfig';
+import { firestore, auth } from '../firebaseConfig';
 import {
   collection,
   getDocs,
@@ -20,7 +20,7 @@ import {
   where,
   orderBy,
 } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
 
@@ -39,18 +39,22 @@ export default function ExerciseListScreen() {
   const [professors, setProfessors] = useState<Professor[]>([]);
   const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [completedExercises, setCompletedExercises] = useState<string[]>([]);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
     const fetchProfessors = async () => {
       try {
-        const querySnapshot = await getDocs(collection(firestore, 'users'));
+        const q = query(
+          collection(firestore, 'users'),
+          where('userType', '==', 'Professor'),
+          where('approvalStatus', '==', 'aprovado')
+        );
+        const querySnapshot = await getDocs(q);
         const professorsData: Professor[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          if (data.userType === 'Professor') {
-            professorsData.push({ uid: doc.id, name: data.name || 'Professor' });
-          }
+          professorsData.push({ uid: doc.id, name: data.name || 'Professor' });
         });
         setProfessors(professorsData);
       } catch (error) {
@@ -60,32 +64,55 @@ export default function ExerciseListScreen() {
     fetchProfessors();
   }, []);
 
-  useEffect(() => {
-    if (selectedProfessor) {
-      const fetchExercises = async () => {
-        try {
-          const q = query(
-            collection(firestore, 'exercises'),
-            where('createdBy', '==', selectedProfessor.uid),
-            orderBy('createdAt', 'asc')
-          );
-          const querySnapshot = await getDocs(q);
-          const exercisesData: Exercise[] = [];
-          querySnapshot.docs.forEach((doc, index) => {
-            exercisesData.push({
-              id: doc.id,
-              question: `Exercício ${index + 1}`,
-              xpValue: doc.data().xpValue || 10,
+  useFocusEffect(
+    React.useCallback(() => {
+      if (selectedProfessor) {
+        const fetchExercises = async () => {
+          try {
+            const q = query(
+              collection(firestore, 'exercises'),
+              where('createdBy', '==', selectedProfessor.uid),
+              orderBy('createdAt', 'asc')
+            );
+            const querySnapshot = await getDocs(q);
+            const exercisesData: Exercise[] = [];
+            querySnapshot.docs.forEach((doc, index) => {
+              const data = doc.data();
+              exercisesData.push({
+                id: doc.id,
+                question: `${index + 1}. ${data.name || 'Exercício Sem Nome'}`, // Adiciona a numeração
+                xpValue: data.xpValue || 10,
+              });
             });
-          });
-          setExercises(exercisesData);
-        } catch (error) {
-          console.error('Erro ao buscar exercícios:', error);
-        }
-      };
-      fetchExercises();
+            setExercises(exercisesData);
+
+            // Verificar quais exercícios o aluno já completou
+            await checkCompletedExercises();
+          } catch (error) {
+            console.error('Erro ao buscar exercícios:', error);
+          }
+        };
+        fetchExercises();
+      }
+    }, [selectedProfessor])
+  );
+
+  const checkCompletedExercises = async () => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        const q = query(
+          collection(firestore, 'results'),
+          where('userId', '==', user.uid)
+        );
+        const querySnapshot = await getDocs(q);
+        const completedIds = querySnapshot.docs.map((doc) => doc.data().exerciseId);
+        setCompletedExercises(completedIds);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar exercícios concluídos:', error);
     }
-  }, [selectedProfessor]);
+  };
 
   const renderProfessorItem = ({ item }: { item: Professor }) => (
     <TouchableOpacity
@@ -96,15 +123,18 @@ export default function ExerciseListScreen() {
     </TouchableOpacity>
   );
 
-  const renderExerciseItem = ({ item }: { item: Exercise }) => (
-    <TouchableOpacity
-      style={styles.exerciseItem}
-      onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: item.id })}
-    >
-      <Text style={styles.exerciseText}>{item.question}</Text>
-      <Text style={styles.xpText}>+{item.xpValue}XP</Text>
-    </TouchableOpacity>
-  );
+  const renderExerciseItem = ({ item }: { item: Exercise }) => {
+    const isCompleted = completedExercises.includes(item.id);
+    return (
+      <TouchableOpacity
+        style={styles.exerciseItem}
+        onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: item.id })}
+      >
+        <Text style={styles.exerciseText}>{item.question}</Text>
+        {isCompleted && <Text style={styles.xpText}>+{item.xpValue}XP</Text>}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>

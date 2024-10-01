@@ -19,6 +19,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Picker } from '@react-native-picker/picker';
 
 export default function AddExerciseScreen() {
+  const [exerciseName, setExerciseName] = useState(''); // Novo estado para o nome do exercício
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
@@ -29,6 +30,7 @@ export default function AddExerciseScreen() {
 
   const addExercise = async () => {
     if (
+      exerciseName === '' || // Verifica se o nome do exercício foi fornecido
       question === '' ||
       options.some((option) => option === '') ||
       correctOption === null
@@ -40,6 +42,7 @@ export default function AddExerciseScreen() {
     try {
       const user = auth.currentUser;
       await addDoc(collection(firestore, 'exercises'), {
+        name: exerciseName, // Salva o nome do exercício
         question,
         options,
         correctOption,
@@ -49,6 +52,7 @@ export default function AddExerciseScreen() {
       });
       Alert.alert('Sucesso', 'Exercício adicionado com sucesso.');
       // Limpar campos
+      setExerciseName('');
       setQuestion('');
       setOptions(['', '', '', '']);
       setCorrectOption(null);
@@ -65,6 +69,15 @@ export default function AddExerciseScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
       <Header title="Adicionar Exercício" showBackButton />
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.label}>Nome do Exercício:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Digite o nome do exercício"
+          placeholderTextColor="#aaa"
+          onChangeText={(text) => setExerciseName(text)}
+          value={exerciseName}
+        />
+
         <Text style={styles.label}>Pergunta:</Text>
         <TextInput
           style={styles.input}
@@ -128,6 +141,7 @@ export default function AddExerciseScreen() {
 }
 
 const styles = StyleSheet.create({
+  // ... estilos existentes
   container: {
     flex: 1,
     backgroundColor: '#fff',

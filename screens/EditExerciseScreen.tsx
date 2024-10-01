@@ -26,6 +26,7 @@ export default function EditExerciseScreen() {
   const route = useRoute<EditExerciseRouteProp>();
   const { exerciseId } = route.params;
 
+  const [exerciseName, setExerciseName] = useState(''); // Novo estado para o nome do exercício
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
@@ -39,6 +40,7 @@ export default function EditExerciseScreen() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
+          setExerciseName(data.name || ''); // Define o nome do exercício
           setQuestion(data.question);
           setOptions(data.options);
           setCorrectOption(data.correctOption);
@@ -55,6 +57,7 @@ export default function EditExerciseScreen() {
 
   const updateExercise = async () => {
     if (
+      exerciseName === '' || // Verifica se o nome do exercício foi fornecido
       question === '' ||
       options.some((option) => option === '') ||
       correctOption === null
@@ -66,6 +69,7 @@ export default function EditExerciseScreen() {
     try {
       const exerciseRef = doc(firestore, 'exercises', exerciseId);
       await updateDoc(exerciseRef, {
+        name: exerciseName, // Atualiza o nome do exercício
         question,
         options,
         correctOption,
@@ -83,6 +87,15 @@ export default function EditExerciseScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
       <Header title="Editar Exercício" showBackButton />
       <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.label}>Nome do Exercício:</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Digite o nome do exercício"
+          placeholderTextColor="#aaa"
+          onChangeText={(text) => setExerciseName(text)}
+          value={exerciseName}
+        />
+
         <Text style={styles.label}>Pergunta:</Text>
         <TextInput
           style={styles.input}

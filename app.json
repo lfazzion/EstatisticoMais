@@ -2,7 +2,7 @@
   "expo": {
     "name": "EstatisticoMais",
     "slug": "EstatisticoMais",
-    "version": "1.0.0",
+    "version": "0.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,10 +18,16 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.lfazzion.EstatisticoMais"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "753bca9c-516b-4914-a3ff-6fc84c415f82"
+      }
     }
   }
 }

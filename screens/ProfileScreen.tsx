@@ -27,6 +27,8 @@ export default function ProfileScreen() {
   const [originalEmail, setOriginalEmail] = useState('');
   const [error, setError] = useState('');
 
+  const [userType, setUserType] = useState(''); // Novo estado para armazenar o tipo de usuário
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -40,6 +42,7 @@ export default function ProfileScreen() {
             setName(data.name || '');
             setEmail(user.email || '');
             setOriginalEmail(user.email || '');
+            setUserType(data.userType || ''); // Define o tipo de usuário
           } else {
             console.error('Dados do usuário não encontrados');
           }
@@ -144,15 +147,19 @@ export default function ProfileScreen() {
           autoCapitalize="none"
         />
 
-        <Text style={styles.label}>Nível: {userData.level || 1}</Text>
-        <ProgressBar
-          progress={getXpProgress()}
-          color="#4caf50"
-          style={styles.progressBar}
-        />
-        <Text style={styles.xpText}>
-          XP: {userData.xp || 0} / {getNextLevelXp(userData.level || 1)}
-        </Text>
+        {userType === 'Aluno' && (
+          <>
+            <Text style={styles.label}>Nível: {userData.level || 1}</Text>
+            <ProgressBar
+              progress={getXpProgress()}
+              color="#4caf50"
+              style={styles.progressBar}
+            />
+            <Text style={styles.xpText}>
+              XP: {userData.xp || 0} / {getNextLevelXp(userData.level || 1)}
+            </Text>
+          </>
+        )}
 
         {error !== '' && <Text style={styles.errorText}>{error}</Text>}
 

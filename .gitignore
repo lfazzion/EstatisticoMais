@@ -5,6 +5,7 @@ node_modules/
 
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 
@@ -27,9 +28,22 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+Thumbs.db
 
 # local env files
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
+
+# Relatórios de cobertura
+coverage/
+
+# Pastas de configuração de editores
+.vscode/
+.idea/
+
+# Outros
+*.log
+*.tmp
