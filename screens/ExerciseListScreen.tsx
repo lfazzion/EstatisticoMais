@@ -1,10 +1,25 @@
 // screens/ExerciseListScreen.tsx
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView, Platform, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  SafeAreaView,
+  Platform,
+  StatusBar,
+} from 'react-native';
 import Header from '../components/Header';
 import { firestore } from '../firebaseConfig';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  orderBy,
+} from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -17,6 +32,7 @@ interface Professor {
 interface Exercise {
   id: string;
   question: string;
+  xpValue: number;
 }
 
 export default function ExerciseListScreen() {
@@ -30,7 +46,7 @@ export default function ExerciseListScreen() {
       try {
         const querySnapshot = await getDocs(collection(firestore, 'users'));
         const professorsData: Professor[] = [];
-        querySnapshot.forEach(doc => {
+        querySnapshot.forEach((doc) => {
           const data = doc.data();
           if (data.userType === 'Professor') {
             professorsData.push({ uid: doc.id, name: data.name || 'Professor' });
@@ -48,11 +64,19 @@ export default function ExerciseListScreen() {
     if (selectedProfessor) {
       const fetchExercises = async () => {
         try {
-          const q = query(collection(firestore, 'exercises'), where('createdBy', '==', selectedProfessor.uid));
+          const q = query(
+            collection(firestore, 'exercises'),
+            where('createdBy', '==', selectedProfessor.uid),
+            orderBy('createdAt', 'asc')
+          );
           const querySnapshot = await getDocs(q);
           const exercisesData: Exercise[] = [];
-          querySnapshot.forEach(doc => {
-            exercisesData.push({ id: doc.id, ...doc.data() } as Exercise);
+          querySnapshot.docs.forEach((doc, index) => {
+            exercisesData.push({
+              id: doc.id,
+              question: `Exercício ${index + 1}`,
+              xpValue: doc.data().xpValue || 10,
+            });
           });
           setExercises(exercisesData);
         } catch (error) {
@@ -73,11 +97,12 @@ export default function ExerciseListScreen() {
   );
 
   const renderExerciseItem = ({ item }: { item: Exercise }) => (
-    <TouchableOpacity 
-      style={styles.exerciseItem} 
+    <TouchableOpacity
+      style={styles.exerciseItem}
       onPress={() => navigation.navigate('ExerciseDetail', { exerciseId: item.id })}
     >
       <Text style={styles.exerciseText}>{item.question}</Text>
+      <Text style={styles.xpText}>+{item.xpValue}XP</Text>
     </TouchableOpacity>
   );
 
@@ -91,7 +116,7 @@ export default function ExerciseListScreen() {
             <Text style={styles.title}>Selecione um Professor:</Text>
             <FlatList
               data={professors}
-              keyExtractor={item => item.uid}
+              keyExtractor={(item) => item.uid}
               renderItem={renderProfessorItem}
               contentContainerStyle={styles.listContent}
             />
@@ -101,7 +126,7 @@ export default function ExerciseListScreen() {
             <Text style={styles.title}>Exercícios de {selectedProfessor.name}:</Text>
             <FlatList
               data={exercises}
-              keyExtractor={item => item.id}
+              keyExtractor={(item) => item.id}
               renderItem={renderExerciseItem}
               contentContainerStyle={styles.listContent}
             />
@@ -144,6 +169,9 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   exerciseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#eee',
     borderRadius: 8,
     padding: 15,
@@ -152,6 +180,10 @@ const styles = StyleSheet.create({
   exerciseText: {
     fontSize: 16,
     color: '#333',
+  },
+  xpText: {
+    fontSize: 16,
+    color: 'green',
   },
   title: {
     fontSize: 18,

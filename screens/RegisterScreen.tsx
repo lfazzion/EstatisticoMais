@@ -1,10 +1,23 @@
 // screens/RegisterScreen.tsx
+
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, Pressable } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Alert,
+  Pressable,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { auth, firestore } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  updateEmail,
+} from 'firebase/auth';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
@@ -13,6 +26,9 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function RegisterScreen() {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+
+  // Adicionado campo de nome
+  const [name, setName] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +42,12 @@ export default function RegisterScreen() {
   const [userType, setUserType] = useState<'Aluno' | 'Professor'>('Aluno');
 
   const registerUser = () => {
-    if (email === '' || password === '' || confirmPassword === '') {
+    if (
+      name === '' || // Verifica se o nome foi preenchido
+      email === '' ||
+      password === '' ||
+      confirmPassword === ''
+    ) {
       setError('Por favor, preencha todos os campos.');
       return;
     }
@@ -43,13 +64,18 @@ export default function RegisterScreen() {
         const user = userCredential.user;
         // Definir status de aprovação
         const approvalStatus = userType === 'Professor' ? 'pendente' : 'aprovado';
-        
+
+        // Salvar dados do usuário no Firestore, incluindo o nome
         await setDoc(doc(firestore, 'users', user.uid), {
+          name: name,
           email: user.email,
           userType: userType,
           approvalStatus: approvalStatus,
           createdAt: serverTimestamp(),
+          xp: 0, // Inicia o XP com 0
+          level: 1, // Inicia no nível 1
         });
+
         // Enviar email de verificação
         await sendEmailVerification(user);
         // Exibir alerta informando que o email de verificação foi enviado
@@ -65,7 +91,7 @@ export default function RegisterScreen() {
           { cancelable: false }
         );
       })
-      .catch(error => {
+      .catch((error) => {
         const errorCode = error.code;
         if (errorCode === 'auth/email-already-in-use') {
           setError('Este email já está cadastrado. Utilize outro email.');
@@ -84,11 +110,18 @@ export default function RegisterScreen() {
       <Text style={styles.title}>Registrar-se</Text>
       <TextInput
         style={styles.input}
+        placeholder="Nome"
+        placeholderTextColor="#aaa"
+        onChangeText={(name) => setName(name)}
+        value={name}
+      />
+      <TextInput
+        style={styles.input}
         placeholder="Email"
         placeholderTextColor="#aaa"
         keyboardType="email-address"
         autoCapitalize="none"
-        onChangeText={email => setEmail(email)}
+        onChangeText={(email) => setEmail(email)}
         value={email}
       />
       <View style={styles.passwordContainer}>
@@ -97,7 +130,7 @@ export default function RegisterScreen() {
           placeholder="Senha"
           placeholderTextColor="#aaa"
           secureTextEntry={secureTextEntry}
-          onChangeText={password => setPassword(password)}
+          onChangeText={(password) => setPassword(password)}
           value={password}
         />
         <Pressable onPress={() => setSecureTextEntry(!secureTextEntry)}>
@@ -114,7 +147,9 @@ export default function RegisterScreen() {
           placeholder="Confirmar Senha"
           placeholderTextColor="#aaa"
           secureTextEntry={secureConfirmEntry}
-          onChangeText={confirmPassword => setConfirmPassword(confirmPassword)}
+          onChangeText={(confirmPassword) =>
+            setConfirmPassword(confirmPassword)
+          }
           value={confirmPassword}
         />
         <Pressable onPress={() => setSecureConfirmEntry(!secureConfirmEntry)}>
@@ -135,9 +170,7 @@ export default function RegisterScreen() {
           <Picker.Item label="Professor" value="Professor" />
         </Picker>
       </View>
-      {error !== '' && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
+      {error !== '' && <Text style={styles.errorText}>{error}</Text>}
       <TouchableOpacity style={styles.button} onPress={registerUser}>
         <Text style={styles.buttonText}>Registrar</Text>
       </TouchableOpacity>

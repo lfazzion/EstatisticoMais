@@ -1,10 +1,22 @@
 // screens/AddExerciseScreen.tsx
 
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, ScrollView, Alert, SafeAreaView, StatusBar, Platform } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import Header from '../components/Header';
 import { firestore, auth } from '../firebaseConfig';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Picker } from '@react-native-picker/picker';
 
 export default function AddExerciseScreen() {
   const [question, setQuestion] = useState('');
@@ -12,8 +24,15 @@ export default function AddExerciseScreen() {
   const [correctOption, setCorrectOption] = useState<number | null>(null);
   const [error, setError] = useState('');
 
+  // Novo campo para selecionar o XP do exercício
+  const [xpValue, setXpValue] = useState(10);
+
   const addExercise = async () => {
-    if (question === '' || options.some(option => option === '') || correctOption === null) {
+    if (
+      question === '' ||
+      options.some((option) => option === '') ||
+      correctOption === null
+    ) {
       setError('Por favor, preencha todos os campos e selecione a opção correta.');
       return;
     }
@@ -24,6 +43,7 @@ export default function AddExerciseScreen() {
         question,
         options,
         correctOption,
+        xpValue,
         createdAt: serverTimestamp(),
         createdBy: user ? user.uid : null,
       });
@@ -32,6 +52,7 @@ export default function AddExerciseScreen() {
       setQuestion('');
       setOptions(['', '', '', '']);
       setCorrectOption(null);
+      setXpValue(10);
       setError('');
     } catch (error) {
       console.error('Erro ao adicionar exercício:', error);
@@ -51,7 +72,7 @@ export default function AddExerciseScreen() {
           placeholderTextColor="#aaa"
           multiline
           numberOfLines={4}
-          onChangeText={text => setQuestion(text)}
+          onChangeText={(text) => setQuestion(text)}
           value={question}
         />
         <Text style={styles.label}>Opções:</Text>
@@ -61,7 +82,7 @@ export default function AddExerciseScreen() {
             style={styles.input}
             placeholder={`Opção ${index + 1}`}
             placeholderTextColor="#aaa"
-            onChangeText={text => {
+            onChangeText={(text) => {
               const newOptions = [...options];
               newOptions[index] = text;
               setOptions(newOptions);
@@ -82,9 +103,22 @@ export default function AddExerciseScreen() {
             <Text style={styles.optionText}>{`Opção ${index + 1}: ${option}`}</Text>
           </TouchableOpacity>
         ))}
-        {error !== '' && (
-          <Text style={styles.errorText}>{error}</Text>
-        )}
+
+        <Text style={styles.label}>Selecione o valor de XP:</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={xpValue}
+            onValueChange={(itemValue) => setXpValue(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="+10XP (Fácil)" value={10} />
+            <Picker.Item label="+20XP (Médio)" value={20} />
+            <Picker.Item label="+30XP (Difícil)" value={30} />
+            <Picker.Item label="+50XP (Muito Difícil)" value={50} />
+          </Picker>
+        </View>
+
+        {error !== '' && <Text style={styles.errorText}>{error}</Text>}
         <TouchableOpacity style={styles.button} onPress={addExercise}>
           <Text style={styles.buttonText}>Salvar Exercício</Text>
         </TouchableOpacity>
@@ -129,6 +163,16 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
+    color: '#333',
+  },
+  pickerContainer: {
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  picker: {
+    width: '100%',
+    height: 50,
     color: '#333',
   },
   button: {

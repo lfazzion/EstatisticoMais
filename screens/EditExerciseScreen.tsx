@@ -1,12 +1,24 @@
 // screens/EditExerciseScreen.tsx
 
 import React, { useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, ScrollView, Alert, SafeAreaView, StatusBar, Platform } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import Header from '../components/Header';
 import { firestore } from '../firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
+import { Picker } from '@react-native-picker/picker';
 
 type EditExerciseRouteProp = RouteProp<RootStackParamList, 'EditExercise'>;
 
@@ -17,6 +29,7 @@ export default function EditExerciseScreen() {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
+  const [xpValue, setXpValue] = useState(10);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -29,6 +42,7 @@ export default function EditExerciseScreen() {
           setQuestion(data.question);
           setOptions(data.options);
           setCorrectOption(data.correctOption);
+          setXpValue(data.xpValue || 10);
         } else {
           console.error('Exercício não encontrado');
         }
@@ -40,7 +54,11 @@ export default function EditExerciseScreen() {
   }, [exerciseId]);
 
   const updateExercise = async () => {
-    if (question === '' || options.some(option => option === '') || correctOption === null) {
+    if (
+      question === '' ||
+      options.some((option) => option === '') ||
+      correctOption === null
+    ) {
       setError('Por favor, preencha todos os campos e selecione a opção correta.');
       return;
     }
@@ -51,6 +69,7 @@ export default function EditExerciseScreen() {
         question,
         options,
         correctOption,
+        xpValue,
       });
       Alert.alert('Sucesso', 'Exercício atualizado com sucesso.');
     } catch (error) {
@@ -71,7 +90,7 @@ export default function EditExerciseScreen() {
           placeholderTextColor="#aaa"
           multiline
           numberOfLines={4}
-          onChangeText={text => setQuestion(text)}
+          onChangeText={(text) => setQuestion(text)}
           value={question}
         />
         <Text style={styles.label}>Opções:</Text>
@@ -81,7 +100,7 @@ export default function EditExerciseScreen() {
             style={styles.input}
             placeholder={`Opção ${index + 1}`}
             placeholderTextColor="#aaa"
-            onChangeText={text => {
+            onChangeText={(text) => {
               const newOptions = [...options];
               newOptions[index] = text;
               setOptions(newOptions);
@@ -102,9 +121,22 @@ export default function EditExerciseScreen() {
             <Text style={styles.optionText}>{`Opção ${index + 1}: ${option}`}</Text>
           </TouchableOpacity>
         ))}
-        {error !== '' && (
-          <Text style={styles.errorText}>{error}</Text>
-        )}
+
+        <Text style={styles.label}>Selecione o valor de XP:</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={xpValue}
+            onValueChange={(itemValue) => setXpValue(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="+10XP (Fácil)" value={10} />
+            <Picker.Item label="+20XP (Médio)" value={20} />
+            <Picker.Item label="+30XP (Difícil)" value={30} />
+            <Picker.Item label="+50XP (Muito Difícil)" value={50} />
+          </Picker>
+        </View>
+
+        {error !== '' && <Text style={styles.errorText}>{error}</Text>}
         <TouchableOpacity style={styles.button} onPress={updateExercise}>
           <Text style={styles.buttonText}>Atualizar Exercício</Text>
         </TouchableOpacity>
@@ -150,6 +182,16 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
+    color: '#333',
+  },
+  pickerContainer: {
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  picker: {
+    width: '100%',
+    height: 50,
     color: '#333',
   },
   button: {

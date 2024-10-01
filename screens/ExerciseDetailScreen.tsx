@@ -1,14 +1,40 @@
 // screens/ExerciseDetailScreen.tsx
 
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, StatusBar, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import Header from '../components/Header';
 import { firestore, auth } from '../firebaseConfig';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  getDocs,
+  runTransaction,
+} from 'firebase/firestore';
 import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 
 type ExerciseDetailRouteProp = RouteProp<RootStackParamList, 'ExerciseDetail'>;
+
+// Definir a interface para os dados do usuário
+interface UserData {
+  xp: number;
+  level: number;
+  // Outros campos, se houver
+}
 
 export default function ExerciseDetailScreen() {
   const route = useRoute<ExerciseDetailRouteProp>();
@@ -17,6 +43,7 @@ export default function ExerciseDetailScreen() {
   const [exercise, setExercise] = useState<any>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [alreadyAnswered, setAlreadyAnswered] = useState(false);
 
   useEffect(() => {
     const fetchExercise = async () => {
@@ -35,6 +62,28 @@ export default function ExerciseDetailScreen() {
     fetchExercise();
   }, [exerciseId]);
 
+  useEffect(() => {
+    const checkIfAnswered = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const q = query(
+            collection(firestore, 'results'),
+            where('exerciseId', '==', exerciseId),
+            where('userId', '==', user.uid)
+          );
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            setAlreadyAnswered(true);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar se o exercício já foi respondido:', error);
+      }
+    };
+    checkIfAnswered();
+  }, [exerciseId]);
+
   const submitAnswer = async () => {
     if (selectedOption === null) {
       Alert.alert('Selecione uma opção', 'Por favor, selecione uma opção antes de enviar.');
@@ -46,25 +95,76 @@ export default function ExerciseDetailScreen() {
     // Salvar resultado
     try {
       const user = auth.currentUser;
-      await addDoc(collection(firestore, 'results'), {
-        exerciseId: exerciseId,
-        isCorrect: isCorrect,
-        answeredAt: serverTimestamp(),
-        userId: user ? user.uid : null,
-      });
+      if (user) {
+        await addDoc(collection(firestore, 'results'), {
+          exerciseId: exerciseId,
+          isCorrect: isCorrect,
+          answeredAt: serverTimestamp(),
+          userId: user.uid,
+        });
+
+        // Se for a primeira vez que o aluno responde este exercício, adicionar XP
+        if (!alreadyAnswered) {
+          const userRef = doc(firestore, 'users', user.uid);
+          await updateXp(userRef, exercise.xpValue);
+        }
+      }
     } catch (error) {
       console.error('Erro ao salvar resultado:', error);
     }
 
     setSubmitted(true);
+    setAlreadyAnswered(true);
     Alert.alert(
       isCorrect ? 'Resposta Correta!' : 'Resposta Incorreta',
       isCorrect ? 'Parabéns, você acertou!' : 'A resposta selecionada está incorreta.',
-      [
-        { text: 'OK' },
-      ],
+      [{ text: 'OK' }],
       { cancelable: false }
     );
+  };
+
+  const updateXp = async (userRef: any, xpToAdd: number) => {
+    try {
+      await runTransaction(firestore, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+          throw 'Usuário não existe!';
+        }
+
+        const userData = userDoc.data() as UserData;
+
+        const newXp = (userData.xp || 0) + xpToAdd;
+        const newLevel = calculateLevel(newXp);
+
+        transaction.update(userRef, {
+          xp: newXp,
+          level: newLevel,
+        });
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar XP:', error);
+    }
+  };
+
+  const calculateLevel = (xp: number) => {
+    // Defina os níveis e os XP necessários
+    const levels = [
+      { level: 1, xpNeeded: 0 },
+      { level: 2, xpNeeded: 100 },
+      { level: 3, xpNeeded: 250 },
+      { level: 4, xpNeeded: 500 },
+      { level: 5, xpNeeded: 1000 },
+      // Adicione mais níveis conforme necessário
+    ];
+
+    let currentLevel = levels[levels.length - 1].level;
+    for (let i = 0; i < levels.length; i++) {
+      if (xp < levels[i].xpNeeded) {
+        currentLevel = levels[i - 1].level;
+        break;
+      }
+    }
+    return currentLevel;
   };
 
   if (!exercise) {
@@ -92,7 +192,10 @@ export default function ExerciseDetailScreen() {
               styles.optionButton,
               selectedOption === index && styles.selectedOption,
               submitted && index === exercise.correctOption && styles.correctOption,
-              submitted && selectedOption === index && selectedOption !== exercise.correctOption && styles.incorrectOption,
+              submitted &&
+                selectedOption === index &&
+                selectedOption !== exercise.correctOption &&
+                styles.incorrectOption,
             ]}
             onPress={() => !submitted && setSelectedOption(index)}
           >
@@ -109,6 +212,11 @@ export default function ExerciseDetailScreen() {
             {selectedOption === exercise.correctOption
               ? 'Você acertou!'
               : `Você errou. A resposta correta é: ${exercise.options[exercise.correctOption]}`}
+          </Text>
+        )}
+        {alreadyAnswered && (
+          <Text style={styles.infoText}>
+            Você já respondeu este exercício. Não ganhará XP adicional.
           </Text>
         )}
       </View>
@@ -167,5 +275,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 20,
     textAlign: 'center',
+  },
+  infoText: {
+    fontSize: 16,
+    marginTop: 10,
+    textAlign: 'center',
+    color: '#777',
   },
 });
