@@ -40,8 +40,9 @@ O Estatístico+ é um aplicativo móvel desenvolvido em React Native com TypeScr
 
 ## Pré-requisitos
 
-- **Node.js** (versão LTS recomendada)
-- **Git** (para clonar o repositório)
+- **[Node.js](https://nodejs.org/pt/download/prebuilt-installer)** (versão LTS recomendada)
+- **[Git](https://git-scm.com/downloads)** (para clonar o repositório)
+- **[Conta Expo](https://expo.dev/)** (para executar e compilar o projeto)
 
 ## Instalação
 
@@ -61,6 +62,12 @@ cd EstatisticoMais
 
 ```bash
 npm install
+```
+
+**4. Logue no Expo**
+
+```bash
+npm expo login
 ```
 
 ## Execução
@@ -97,7 +104,7 @@ npm install
     ```
   - Pressione `i` para abrir o aplicativo no iPhone simulado.
 
-<!--## Compilação para Produção
+## Compilação para Produção
 
 Para gerar os arquivos de instalação (APK para Android ou IPA para iOS), você precisará configurar o Expo Application Services (EAS).
 
@@ -107,33 +114,30 @@ Para gerar os arquivos de instalação (APK para Android ou IPA para iOS), você
 npm install -g eas-cli
 ```
 
-**2. Login no EAS**
-
-```bash
-eas login
-```
-
-**3. Configurar o Projeto**
+**2. Configurar o Projeto**
 
 ```bash
 eas build:configure
 ```
 
-**4. Construir o Aplicativo**
+**3. Construir o Aplicativo**
 
 - **Android:**
 
 ```bash
-eas build -p android --profile production
+eas build -p android --profile preview
 ```
 
 - **iOS:**
 
 ```bash
-eas build -p ios --profile production
+eas build -p ios --profile preview
 ```
 
-**Nota:** Para iOS, você precisará de uma conta de desenvolvedor Apple.-->
+**Notas:**
+
+- Para iOS, você precisará de uma conta de desenvolvedor Apple.
+- Em caso de produção, substitua o `preview` por `production`.
 
 ## Contribuição
 
