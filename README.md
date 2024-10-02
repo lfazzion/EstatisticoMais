@@ -67,7 +67,7 @@ npm install
 **4. Logue no Expo**
 
 ```bash
-npm expo login
+npx expo login
 ```
 
 ## Execução
