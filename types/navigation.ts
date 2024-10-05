@@ -12,7 +12,9 @@ export type RootStackParamList = {
   Videos: undefined;
   ReadingMaterials: undefined;
   ProfessorExercises: undefined;
-  EditExercise: { exerciseId: string }; // Adicionado
+  EditExercise: { exerciseId: string };
+  Hint: { hint: string };
+  Settings: undefined; // Adicionado
   // Adicione outras telas conforme necessário
 };
 
@@ -21,6 +23,7 @@ export type AlunoDrawerParamList = {
   AlunoHome: undefined;
   ExerciseList: undefined;
   Profile: undefined;
+  Settings: undefined; // Adicionado
   // Adicione outras telas específicas para o aluno
 };
 
@@ -28,7 +31,8 @@ export type AlunoDrawerParamList = {
 export type ProfessorDrawerParamList = {
   ProfessorHome: undefined;
   AddExercise: undefined;
-  ProfessorExercises: undefined; // Adicionado
+  ProfessorExercises: undefined;
   Profile: undefined;
+  Settings: undefined; // Adicionado
   // Adicione outras telas específicas para o professor
 };

@@ -1,5 +1,3 @@
-// screens/EditExerciseScreen.tsx
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,20 +14,25 @@ import {
 import Header from '../components/Header';
 import { firestore } from '../firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { RouteProp, useRoute } from '@react-navigation/native';
+import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Picker } from '@react-native-picker/picker';
+import { StackNavigationProp } from '@react-navigation/stack';
+import Checkbox from 'expo-checkbox'; // Usando expo-checkbox para os checkboxes
 
 type EditExerciseRouteProp = RouteProp<RootStackParamList, 'EditExercise'>;
+type EditExerciseNavigationProp = StackNavigationProp<RootStackParamList, 'EditExercise'>;
 
 export default function EditExerciseScreen() {
   const route = useRoute<EditExerciseRouteProp>();
+  const navigation = useNavigation<EditExerciseNavigationProp>();
   const { exerciseId } = route.params;
 
-  const [exerciseName, setExerciseName] = useState(''); // Novo estado para o nome do exercício
+  const [exerciseName, setExerciseName] = useState('');
   const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '', '', '']);
-  const [correctOption, setCorrectOption] = useState<number | null>(null);
+  const [options, setOptions] = useState(['', '', '', '', '']);
+  const [correctOptions, setCorrectOptions] = useState<boolean[]>([false, false, false, false, false]);
+  const [hint, setHint] = useState('');
   const [xpValue, setXpValue] = useState(10);
   const [error, setError] = useState('');
 
@@ -40,10 +43,14 @@ export default function EditExerciseScreen() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setExerciseName(data.name || ''); // Define o nome do exercício
-          setQuestion(data.question);
-          setOptions(data.options);
-          setCorrectOption(data.correctOption);
+          setExerciseName(data.name || '');
+          setQuestion(data.question || '');
+          const fetchedOptions = data.options || [''];
+          const fetchedCorrectOptions = data.correctOptions || [false];
+          // Preencher arrays até 5 elementos
+          setOptions([...fetchedOptions, '', '', '', ''].slice(0, 5));
+          setCorrectOptions([...fetchedCorrectOptions, false, false, false, false].slice(0, 5));
+          setHint(data.hint || '');
           setXpValue(data.xpValue || 10);
         } else {
           console.error('Exercício não encontrado');
@@ -56,26 +63,36 @@ export default function EditExerciseScreen() {
   }, [exerciseId]);
 
   const updateExercise = async () => {
+    // Filtrar opções em branco
+    const filteredOptions = options.filter((option) => option.trim() !== '');
+    const filteredCorrectOptions = correctOptions.slice(0, filteredOptions.length);
+
     if (
-      exerciseName === '' || // Verifica se o nome do exercício foi fornecido
-      question === '' ||
-      options.some((option) => option === '') ||
-      correctOption === null
+      exerciseName.trim() === '' ||
+      question.trim() === '' ||
+      filteredOptions.length < 2 ||
+      !filteredCorrectOptions.includes(true)
     ) {
-      setError('Por favor, preencha todos os campos e selecione a opção correta.');
+      setError('Por favor, preencha todos os campos e selecione pelo menos uma opção correta.');
       return;
     }
 
     try {
       const exerciseRef = doc(firestore, 'exercises', exerciseId);
       await updateDoc(exerciseRef, {
-        name: exerciseName, // Atualiza o nome do exercício
-        question,
-        options,
-        correctOption,
+        name: exerciseName.trim(),
+        question: question.trim(),
+        options: filteredOptions,
+        correctOptions: filteredCorrectOptions,
+        hint: hint.trim(),
         xpValue,
       });
-      Alert.alert('Sucesso', 'Exercício atualizado com sucesso.');
+      Alert.alert('Sucesso', 'Exercício atualizado com sucesso.', [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (error) {
       console.error('Erro ao atualizar exercício:', error);
       setError('Ocorreu um erro ao atualizar o exercício. Tente novamente.');
@@ -89,7 +106,7 @@ export default function EditExerciseScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.label}>Nome do Exercício:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { height: 50 }]}
           placeholder="Digite o nome do exercício"
           placeholderTextColor="#aaa"
           onChangeText={(text) => setExerciseName(text)}
@@ -98,7 +115,7 @@ export default function EditExerciseScreen() {
 
         <Text style={styles.label}>Pergunta:</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { height: 100 }]}
           placeholder="Digite a pergunta"
           placeholderTextColor="#aaa"
           multiline
@@ -106,33 +123,33 @@ export default function EditExerciseScreen() {
           onChangeText={(text) => setQuestion(text)}
           value={question}
         />
-        <Text style={styles.label}>Opções:</Text>
+
+        <Text style={styles.label}>Opções(Mínimo 2):</Text>
         {options.map((option, index) => (
-          <TextInput
-            key={index}
-            style={styles.input}
-            placeholder={`Opção ${index + 1}`}
-            placeholderTextColor="#aaa"
-            onChangeText={(text) => {
-              const newOptions = [...options];
-              newOptions[index] = text;
-              setOptions(newOptions);
-            }}
-            value={option}
-          />
-        ))}
-        <Text style={styles.label}>Selecione a opção correta:</Text>
-        {options.map((option, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.optionButton,
-              correctOption === index && styles.selectedOption,
-            ]}
-            onPress={() => setCorrectOption(index)}
-          >
-            <Text style={styles.optionText}>{`Opção ${index + 1}: ${option}`}</Text>
-          </TouchableOpacity>
+          <View key={index} style={styles.optionContainer}>
+            <TextInput
+              style={styles.optionInput}
+              placeholder={`Opção ${index + 1}`}
+              placeholderTextColor="#aaa"
+              onChangeText={(text) => {
+                const newOptions = [...options];
+                newOptions[index] = text;
+                setOptions(newOptions);
+              }}
+              value={option}
+            />
+            <View style={styles.checkboxContainer}>
+              <Checkbox
+                value={correctOptions[index]}
+                onValueChange={(newValue) => {
+                  const newCorrectOptions = [...correctOptions];
+                  newCorrectOptions[index] = newValue;
+                  setCorrectOptions(newCorrectOptions);
+                }}
+              />
+              <Text style={styles.checkboxLabel}>Correta</Text>
+            </View>
+          </View>
         ))}
 
         <Text style={styles.label}>Selecione o valor de XP:</Text>
@@ -148,6 +165,17 @@ export default function EditExerciseScreen() {
             <Picker.Item label="+50XP (Muito Difícil)" value={50} />
           </Picker>
         </View>
+
+        <Text style={styles.label}>Dica:</Text>
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          placeholder="Explicação ou fórmulas a serem utilizadas"
+          placeholderTextColor="#aaa"
+          multiline
+          numberOfLines={4}
+          onChangeText={(text) => setHint(text)}
+          value={hint}
+        />
 
         {error !== '' && <Text style={styles.errorText}>{error}</Text>}
         <TouchableOpacity style={styles.button} onPress={updateExercise}>
@@ -182,18 +210,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
     color: '#333',
-    height: 50,
+    // height ajustável
   },
-  optionButton: {
-    backgroundColor: '#eee',
-    borderRadius: 8,
-    padding: 15,
+  optionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
   },
-  selectedOption: {
-    backgroundColor: '#c8e6c9',
+  optionInput: {
+    flex: 1,
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+    height: 50,
   },
-  optionText: {
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  checkboxLabel: {
+    marginLeft: 5,
     fontSize: 16,
     color: '#333',
   },

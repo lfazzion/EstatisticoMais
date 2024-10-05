@@ -1,47 +1,65 @@
-// screens/ProfessorExercisesScreen.tsx
+// ProfessorExercisesScreen.tsx
 
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, SafeAreaView, StatusBar, Platform } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  Platform,
+} from 'react-native';
 import Header from '../components/Header';
 import { firestore, auth } from '../firebaseConfig';
-import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { useNavigation } from '@react-navigation/native';
+import { collection, query, where, getDocs, deleteDoc, doc, orderBy } from 'firebase/firestore';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
 
 interface Exercise {
   id: string;
   question: string;
+  name: string;
+  createdAt: any; // Adicionei o campo createdAt
 }
 
 export default function ProfessorExercisesScreen() {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  useEffect(() => {
-    const fetchExercises = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const q = query(collection(firestore, 'exercises'), where('createdBy', '==', user.uid));
-          const querySnapshot = await getDocs(q);
-          const exercisesData: Exercise[] = [];
-          querySnapshot.forEach(doc => {
-            exercisesData.push({ id: doc.id, ...doc.data() } as Exercise);
-          });
-          setExercises(exercisesData);
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchExercises = async () => {
+        try {
+          const user = auth.currentUser;
+          if (user) {
+            const q = query(
+              collection(firestore, 'exercises'),
+              where('createdBy', '==', user.uid),
+              orderBy('createdAt', 'asc') // Ordena por data de criação ascendente
+            );
+            const querySnapshot = await getDocs(q);
+            const exercisesData: Exercise[] = [];
+            querySnapshot.forEach((doc) => {
+              exercisesData.push({ id: doc.id, ...doc.data() } as Exercise);
+            });
+            setExercises(exercisesData);
+          }
+        } catch (error) {
+          console.error('Erro ao buscar exercícios:', error);
         }
-      } catch (error) {
-        console.error('Erro ao buscar exercícios:', error);
-      }
-    };
-    fetchExercises();
-  }, []);
+      };
+      fetchExercises();
+    }, [])
+  );
 
   const deleteExercise = async (exerciseId: string) => {
     try {
       await deleteDoc(doc(firestore, 'exercises', exerciseId));
-      setExercises(exercises.filter(exercise => exercise.id !== exerciseId));
+      setExercises(exercises.filter((exercise) => exercise.id !== exerciseId));
     } catch (error) {
       console.error('Erro ao deletar exercício:', error);
     }
@@ -59,9 +77,9 @@ export default function ProfessorExercisesScreen() {
     );
   };
 
-  const renderItem = ({ item }: { item: Exercise }) => (
+  const renderItem = ({ item, index }: { item: Exercise; index: number }) => (
     <View style={styles.exerciseItem}>
-      <Text style={styles.exerciseText}>{item.question}</Text>
+      <Text style={styles.exerciseText}>{`${index + 1}. ${item.name || item.question}`}</Text>
       <View style={styles.buttonsContainer}>
         <TouchableOpacity
           style={styles.editButton}
@@ -69,10 +87,7 @@ export default function ProfessorExercisesScreen() {
         >
           <Text style={styles.buttonText}>Editar</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => confirmDelete(item.id)}
-        >
+        <TouchableOpacity style={styles.deleteButton} onPress={() => confirmDelete(item.id)}>
           <Text style={styles.buttonText}>Excluir</Text>
         </TouchableOpacity>
       </View>
@@ -85,7 +100,7 @@ export default function ProfessorExercisesScreen() {
       <Header title="Meus Exercícios" showBackButton />
       <FlatList
         data={exercises}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
       />

@@ -9,9 +9,10 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 interface HeaderProps {
   title: string;
   showBackButton?: boolean;
+  rightButton?: React.ReactNode;
 }
 
-export default function Header({ title, showBackButton = false }: HeaderProps) {
+export default function Header({ title, showBackButton = false, rightButton }: HeaderProps) {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
 
   const openMenu = () => {
@@ -33,9 +34,13 @@ export default function Header({ title, showBackButton = false }: HeaderProps) {
           <Ionicons name={showBackButton ? 'arrow-back' : 'menu'} size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerText}>{title}</Text>
-        <TouchableOpacity onPress={openProfile}>
-          <Ionicons name="person-circle" size={28} color="#fff" />
-        </TouchableOpacity>
+        {rightButton ? (
+          rightButton
+        ) : (
+          <TouchableOpacity onPress={openProfile}>
+            <Ionicons name="person-circle" size={28} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
