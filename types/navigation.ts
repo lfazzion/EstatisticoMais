@@ -7,15 +7,16 @@ export type RootStackParamList = {
   PasswordReset: undefined;
   AlunoDrawer: undefined;
   ProfessorDrawer: undefined;
+  Profile: undefined;
   ExerciseDetail: { exerciseId: string };
   Games: undefined;
   Videos: undefined;
   ReadingMaterials: undefined;
   ProfessorExercises: undefined;
+  AddExercise: undefined;
   EditExercise: { exerciseId: string };
   Hint: { hint: string };
-  Settings: undefined; // Adicionado
-  // Adicione outras telas conforme necessário
+  Settings: undefined;
 };
 
 // Tipos das rotas do Drawer Navigator do Aluno
@@ -23,16 +24,16 @@ export type AlunoDrawerParamList = {
   AlunoHome: undefined;
   ExerciseList: undefined;
   Profile: undefined;
-  Settings: undefined; // Adicionado
-  // Adicione outras telas específicas para o aluno
+  Settings: undefined;
+  Games: undefined;
+  Videos: undefined;
+  ReadingMaterials: undefined;
 };
 
 // Tipos das rotas do Drawer Navigator do Professor
 export type ProfessorDrawerParamList = {
   ProfessorHome: undefined;
-  AddExercise: undefined;
   ProfessorExercises: undefined;
   Profile: undefined;
-  Settings: undefined; // Adicionado
-  // Adicione outras telas específicas para o professor
+  Settings: undefined;
 };

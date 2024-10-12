@@ -1,86 +1,151 @@
 // screens/LoginScreen.tsx
-import React, { useState, useEffect } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+// Importações necessárias
+import React, { useState } from 'react';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { auth, firestore } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { signInWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
-
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { FirebaseError } from 'firebase/app';
 
-export default function LoginScreen() {
+export default function LoginScreen(): JSX.Element {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [secureTextEntry, setSecureTextEntry] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const [error, setError] = useState('');
-  const [secureTextEntry, setSecureTextEntry] = useState(true);
-  const [loading, setLoading] = useState(false);
-
-  const loginUser = () => {
+  const validateInputs = (): boolean => {
     if (email === '' || password === '') {
       setError('Por favor, preencha todos os campos.');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      setError('Por favor, insira um email válido.');
+      return false;
+    }
+
+    return true;
+  };
+
+  const authenticateUser = async () => {
+    try {
+      return await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      console.error('Erro ao autenticar o usuário:', error);
+      throw error;
+    }
+  };
+
+  const handleAuthError = (error: FirebaseError | any) => {
+    if (error.code) {
+      const errorCode = error.code;
+      if (errorCode === 'auth/invalid-login-credentials') {
+        setError('Email ou senha incorretos. Verifique seus dados e tente novamente.');
+      } else if (errorCode === 'auth/user-not-found') {
+        setError('Usuário não encontrado. Verifique o email digitado.');
+      } else if (errorCode === 'auth/wrong-password') {
+        setError('Senha incorreta. Tente novamente.');
+      } else if (errorCode === 'auth/too-many-requests') {
+        setError('Muitas tentativas de login. Tente novamente mais tarde.');
+      } else if (errorCode === 'auth/network-request-failed') {
+        setError('Falha na conexão de rede. Verifique sua internet e tente novamente.');
+      } else if (errorCode === 'auth/invalid-email') {
+        setError('Email inválido. Verifique o email digitado.');
+      } else if (errorCode === 'auth/user-disabled') {
+        setError('Esta conta foi desativada.');
+      } else {
+        setError(`Ocorreu um erro ao fazer login: ${error.message}`);
+      }
+    } else {
+      setError('Ocorreu um erro ao fazer login. Tente novamente mais tarde.');
+    }
+  };
+
+  const handleUserVerification = async (user: any) => {
+    try {
+      if (user.emailVerified) {
+        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.userType === 'Professor' && userData.approvalStatus === 'pendente') {
+            setError('Sua conta de professor está aguardando aprovação.');
+            return;
+          }
+
+          navigateToDashboard(userData.userType);
+        } else {
+          setError('Dados do usuário não encontrados.');
+        }
+      } else {
+        setError('Email não verificado. Verifique seu email para ativar a conta.');
+        await resendEmailVerification(user);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar o usuário:', error);
+      setError('Ocorreu um erro ao verificar o usuário. Tente novamente mais tarde.');
+    }
+  };
+
+  const navigateToDashboard = (userType: string) => {
+    if (userType === 'Aluno') {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AlunoDrawer' }],
+      });
+    } else if (userType === 'Professor') {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'ProfessorDrawer' }],
+      });
+    }
+  };
+
+  const resendEmailVerification = async (user: any) => {
+    try {
+      await sendEmailVerification(user);
+      console.log('Email de verificação reenviado.');
+      Alert.alert('Verificação de Email', 'Email de verificação reenviado. Verifique sua caixa de entrada.');
+    } catch (error) {
+      console.error('Erro ao reenviar email de verificação:', error);
+    }
+  };
+
+  const loginUser = async () => {
+    if (!validateInputs()) {
       return;
     }
 
     setLoading(true);
 
-    signInWithEmailAndPassword(auth, email, password)
-      .then(async (userCredential) => {
-        const user = userCredential.user;
-        if (user.emailVerified) {
-          // Obter dados do usuário no Firestore
-          const userDoc = await getDoc(doc(firestore, 'users', user.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            if (userData.userType === 'Professor' && userData.approvalStatus === 'pendente') {
-              setError('Sua conta de professor está aguardando aprovação.');
-              setLoading(false);
-              return;
-            }
+    try {
+      // Autenticação do usuário
+      const userCredential = await authenticateUser();
+      const user = userCredential.user;
 
-            // Redirecionar com base no tipo de usuário
-            if (userData.userType === 'Aluno') {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'AlunoDrawer' }],
-              });
-            } else if (userData.userType === 'Professor') {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'ProfessorDrawer' }],
-              });
-            }
-          } else {
-            setError('Dados do usuário não encontrados.');
-          }
-        } else {
-          setError('Email não verificado. Verifique seu email para ativar a conta.');
-          // Reenviar email de verificação (opcional)
-          sendEmailVerification(user)
-            .then(() => {
-              console.log('Email de verificação reenviado.');
-            })
-            .catch(error => {
-              console.error('Erro ao reenviar email de verificação:', error);
-            });
-        }
-        setLoading(false);
-      })
-      .catch(error => {
-        setLoading(false);
-        const errorCode = error.code;
-        if (errorCode === 'auth/user-not-found') {
-          setError('Usuário não encontrado. Verifique o email digitado.');
-        } else if (errorCode === 'auth/wrong-password') {
-          setError('Senha incorreta. Tente novamente.');
-        } else {
-          setError('Ocorreu um erro ao fazer login. Tente novamente mais tarde.');
-        }
-      });
+      // Verificação do usuário
+      await handleUserVerification(user);
+    } catch (error: FirebaseError | any) {
+      handleAuthError(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -92,8 +157,9 @@ export default function LoginScreen() {
         placeholderTextColor="#aaa"
         keyboardType="email-address"
         autoCapitalize="none"
-        onChangeText={email => setEmail(email)}
+        onChangeText={setEmail}
         value={email}
+        accessibilityLabel="Campo de email"
       />
       <View style={styles.passwordContainer}>
         <TextInput
@@ -101,31 +167,48 @@ export default function LoginScreen() {
           placeholder="Senha"
           placeholderTextColor="#aaa"
           secureTextEntry={secureTextEntry}
-          onChangeText={password => setPassword(password)}
+          onChangeText={setPassword}
           value={password}
+          accessibilityLabel="Campo de senha"
         />
-        <Pressable onPress={() => setSecureTextEntry(!secureTextEntry)}>
-          <Ionicons
-            name={secureTextEntry ? 'eye-off' : 'eye'}
-            size={24}
-            color="#aaa"
-          />
+        <Pressable
+          onPress={() => setSecureTextEntry(!secureTextEntry)}
+          accessibilityLabel={secureTextEntry ? 'Mostrar senha' : 'Ocultar senha'}
+          accessibilityRole="button"
+        >
+          <Ionicons name={secureTextEntry ? 'eye-off' : 'eye'} size={24} color="#aaa" />
         </Pressable>
       </View>
-      {error !== '' && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
+      {error !== '' && <Text style={styles.errorText}>{error}</Text>}
       {loading ? (
-        <ActivityIndicator size="large" color="#4caf50" />
+        <ActivityIndicator
+          size="large"
+          color="#4caf50"
+          accessibilityLabel="Carregando, por favor aguarde"
+        />
       ) : (
-        <TouchableOpacity style={styles.button} onPress={loginUser}>
-          <Text style={styles.buttonText}>Entrar</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && { backgroundColor: '#a5d6a7' }]}
+          onPress={loginUser}
+          accessibilityLabel="Botão Entrar"
+          accessibilityRole="button"
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
         </TouchableOpacity>
       )}
-      <TouchableOpacity onPress={() => navigation.navigate('PasswordReset')}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('PasswordReset')}
+        accessibilityLabel="Esqueceu a senha?"
+        accessibilityRole="button"
+      >
         <Text style={styles.linkText}>Esqueceu a senha?</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Register')}
+        accessibilityLabel="Não tem uma conta? Registre-se"
+        accessibilityRole="button"
+      >
         <Text style={styles.linkText}>Não tem uma conta? Registre-se</Text>
       </TouchableOpacity>
     </View>

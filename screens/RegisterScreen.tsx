@@ -1,5 +1,4 @@
 // screens/RegisterScreen.tsx
-
 import React, { useState } from 'react';
 import {
   View,
@@ -9,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { auth, firestore } from '../firebaseConfig';
@@ -16,39 +16,51 @@ import { useNavigation } from '@react-navigation/native';
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
-  updateEmail,
 } from 'firebase/auth';
 import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
-
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { FirebaseError } from 'firebase/app';
 
-export default function RegisterScreen() {
+const RegisterScreen: React.FC = (): JSX.Element => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  // Adicionado campo de nome
-  const [name, setName] = useState('');
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const [secureTextEntry, setSecureTextEntry] = useState(true);
-  const [secureConfirmEntry, setSecureConfirmEntry] = useState(true);
-
+  // Estados do componente
+  const [name, setName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [secureTextEntry, setSecureTextEntry] = useState<boolean>(true);
+  const [secureConfirmEntry, setSecureConfirmEntry] = useState<boolean>(true);
   const [userType, setUserType] = useState<'Aluno' | 'Professor'>('Aluno');
 
-  const registerUser = () => {
-    if (
-      name === '' || // Verifica se o nome foi preenchido
-      email === '' ||
-      password === '' ||
-      confirmPassword === ''
-    ) {
+  // Funções de validação
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const isStrongPassword = (password: string): boolean => {
+    return password.length >= 6;
+  };
+
+  // Funções de manipulação
+  const registerUser = async (): Promise<void> => {
+    if (name === '' || email === '' || password === '' || confirmPassword === '') {
       setError('Por favor, preencha todos os campos.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError('Por favor, insira um email válido.');
+      return;
+    }
+
+    if (!isStrongPassword(password)) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
 
@@ -57,52 +69,51 @@ export default function RegisterScreen() {
       return;
     }
 
-    createUserWithEmailAndPassword(auth, email, password)
-      .then(async (userCredential) => {
-        // Registro bem-sucedido
-        setError('');
-        const user = userCredential.user;
-        // Definir status de aprovação
-        const approvalStatus = userType === 'Professor' ? 'pendente' : 'aprovado';
+    setLoading(true);
 
-        // Salvar dados do usuário no Firestore, incluindo o nome
-        await setDoc(doc(firestore, 'users', user.uid), {
-          name: name,
-          email: user.email,
-          userType: userType,
-          approvalStatus: approvalStatus,
-          createdAt: serverTimestamp(),
-          xp: 0, // Inicia o XP com 0
-          level: 1, // Inicia no nível 1
-        });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-        // Enviar email de verificação
-        await sendEmailVerification(user);
-        // Exibir alerta informando que o email de verificação foi enviado
-        Alert.alert(
-          'Registro bem-sucedido',
-          'Um email de verificação foi enviado para o seu email. Verifique sua caixa de entrada para ativar sua conta.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('Login'),
-            },
-          ],
-          { cancelable: false }
-        );
-      })
-      .catch((error) => {
-        const errorCode = error.code;
-        if (errorCode === 'auth/email-already-in-use') {
-          setError('Este email já está cadastrado. Utilize outro email.');
-        } else if (errorCode === 'auth/invalid-email') {
-          setError('Email inválido. Verifique o email digitado.');
-        } else if (errorCode === 'auth/weak-password') {
-          setError('A senha deve ter pelo menos 6 caracteres.');
-        } else {
-          setError('Ocorreu um erro ao registrar. Tente novamente mais tarde.');
-        }
+      const approvalStatus = userType === 'Professor' ? 'pendente' : 'aprovado';
+
+      await setDoc(doc(firestore, 'users', user.uid), {
+        name: name,
+        email: user.email,
+        userType: userType,
+        approvalStatus: approvalStatus,
+        createdAt: serverTimestamp(),
+        xp: 0,
+        level: 1,
       });
+
+      await sendEmailVerification(user);
+
+      Alert.alert(
+        'Registro bem-sucedido',
+        'Um email de verificação foi enviado para o seu email. Verifique sua caixa de entrada para ativar sua conta.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ],
+        { cancelable: false }
+      );
+    } catch (error: FirebaseError | any) {
+      const errorCode = error.code;
+      if (errorCode === 'auth/email-already-in-use') {
+        setError('Este email já está cadastrado. Utilize outro email.');
+      } else if (errorCode === 'auth/invalid-email') {
+        setError('Email inválido. Verifique o email digitado.');
+      } else if (errorCode === 'auth/weak-password') {
+        setError('A senha deve ter pelo menos 6 caracteres.');
+      } else {
+        setError('Ocorreu um erro ao registrar. Tente novamente mais tarde.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -112,8 +123,10 @@ export default function RegisterScreen() {
         style={styles.input}
         placeholder="Nome"
         placeholderTextColor="#aaa"
-        onChangeText={(name) => setName(name)}
+        onChangeText={setName}
         value={name}
+        accessibilityLabel="Campo de nome"
+        accessibilityHint="Digite seu nome completo"
       />
       <TextInput
         style={styles.input}
@@ -121,8 +134,10 @@ export default function RegisterScreen() {
         placeholderTextColor="#aaa"
         keyboardType="email-address"
         autoCapitalize="none"
-        onChangeText={(email) => setEmail(email)}
+        onChangeText={setEmail}
         value={email}
+        accessibilityLabel="Campo de email"
+        accessibilityHint="Digite seu email"
       />
       <View style={styles.passwordContainer}>
         <TextInput
@@ -130,10 +145,15 @@ export default function RegisterScreen() {
           placeholder="Senha"
           placeholderTextColor="#aaa"
           secureTextEntry={secureTextEntry}
-          onChangeText={(password) => setPassword(password)}
+          onChangeText={setPassword}
           value={password}
+          accessibilityLabel="Campo de senha"
         />
-        <Pressable onPress={() => setSecureTextEntry(!secureTextEntry)}>
+        <Pressable
+          onPress={() => setSecureTextEntry(!secureTextEntry)}
+          accessibilityLabel={secureTextEntry ? 'Mostrar senha' : 'Ocultar senha'}
+          accessibilityRole="button"
+        >
           <Ionicons
             name={secureTextEntry ? 'eye-off' : 'eye'}
             size={24}
@@ -147,12 +167,15 @@ export default function RegisterScreen() {
           placeholder="Confirmar Senha"
           placeholderTextColor="#aaa"
           secureTextEntry={secureConfirmEntry}
-          onChangeText={(confirmPassword) =>
-            setConfirmPassword(confirmPassword)
-          }
+          onChangeText={setConfirmPassword}
           value={confirmPassword}
+          accessibilityLabel="Campo de confirmação de senha"
         />
-        <Pressable onPress={() => setSecureConfirmEntry(!secureConfirmEntry)}>
+        <Pressable
+          onPress={() => setSecureConfirmEntry(!secureConfirmEntry)}
+          accessibilityLabel={secureConfirmEntry ? 'Mostrar senha' : 'Ocultar senha'}
+          accessibilityRole="button"
+        >
           <Ionicons
             name={secureConfirmEntry ? 'eye-off' : 'eye'}
             size={24}
@@ -165,21 +188,44 @@ export default function RegisterScreen() {
           selectedValue={userType}
           onValueChange={(itemValue) => setUserType(itemValue)}
           style={styles.picker}
+          accessibilityLabel="Selecionar tipo de usuário"
         >
           <Picker.Item label="Aluno" value="Aluno" />
           <Picker.Item label="Professor" value="Professor" />
         </Picker>
       </View>
       {error !== '' && <Text style={styles.errorText}>{error}</Text>}
-      <TouchableOpacity style={styles.button} onPress={registerUser}>
-        <Text style={styles.buttonText}>Registrar</Text>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          {
+            backgroundColor:
+              loading || !name || !email || !password || !confirmPassword ? '#ccc' : '#4caf50',
+          },
+        ]}
+        onPress={registerUser}
+        disabled={loading || !name || !email || !password || !confirmPassword}
+        accessibilityLabel="Botão Registrar"
+        accessibilityRole="button"
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Registrar</Text>
+        )}
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Login')}
+        accessibilityLabel="Já tem uma conta? Faça login"
+        accessibilityRole="button"
+      >
         <Text style={styles.linkText}>Já tem uma conta? Faça login</Text>
       </TouchableOpacity>
     </View>
   );
-}
+};
+
+export default RegisterScreen;
 
 const styles = StyleSheet.create({
   container: {

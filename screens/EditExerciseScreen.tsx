@@ -1,3 +1,5 @@
+// screens/EditExerciseScreen.tsx
+// Importações necessárias de módulos e componentes
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -10,6 +12,7 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import Header from '../components/Header';
 import { firestore } from '../firebaseConfig';
@@ -18,24 +21,31 @@ import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { Picker } from '@react-native-picker/picker';
 import { StackNavigationProp } from '@react-navigation/stack';
-import Checkbox from 'expo-checkbox'; // Usando expo-checkbox para os checkboxes
+import { CommonActions } from '@react-navigation/native';
+import Checkbox from 'expo-checkbox';
 
+// Tipagem específica para as propriedades de navegação e rota
 type EditExerciseRouteProp = RouteProp<RootStackParamList, 'EditExercise'>;
 type EditExerciseNavigationProp = StackNavigationProp<RootStackParamList, 'EditExercise'>;
 
+// Componente principal da tela de edição de exercício
 export default function EditExerciseScreen() {
+  // Obtenção das propriedades da rota e navegação
   const route = useRoute<EditExerciseRouteProp>();
   const navigation = useNavigation<EditExerciseNavigationProp>();
-  const { exerciseId } = route.params;
+  const { exerciseId } = route.params; // Obtém o ID do exercício passado pela navegação
 
-  const [exerciseName, setExerciseName] = useState('');
-  const [question, setQuestion] = useState('');
-  const [options, setOptions] = useState(['', '', '', '', '']);
-  const [correctOptions, setCorrectOptions] = useState<boolean[]>([false, false, false, false, false]);
-  const [hint, setHint] = useState('');
-  const [xpValue, setXpValue] = useState(10);
-  const [error, setError] = useState('');
+  // Definição dos estados para controle dos campos e dados do exercício
+  const [exerciseName, setExerciseName] = useState<string>(''); // Nome do exercício
+  const [question, setQuestion] = useState<string>(''); // Pergunta do exercício
+  const [options, setOptions] = useState<string[]>([]); // Opções de resposta
+  const [correctOptions, setCorrectOptions] = useState<boolean[]>([]); // Marcação das opções corretas
+  const [hint, setHint] = useState<string>(''); // Dica ou sugestão para o exercício
+  const [xpValue, setXpValue] = useState<number>(10); // Valor do XP associado
+  const [error, setError] = useState<string>(''); // Mensagem de erro
+  const [loading, setLoading] = useState<boolean>(true); // Controle do estado de carregamento
 
+  // useEffect para buscar os dados do exercício ao carregar o componente
   useEffect(() => {
     const fetchExercise = async () => {
       try {
@@ -43,37 +53,96 @@ export default function EditExerciseScreen() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setExerciseName(data.name || '');
-          setQuestion(data.question || '');
-          const fetchedOptions = data.options || [''];
-          const fetchedCorrectOptions = data.correctOptions || [false];
-          // Preencher arrays até 5 elementos
-          setOptions([...fetchedOptions, '', '', '', ''].slice(0, 5));
-          setCorrectOptions([...fetchedCorrectOptions, false, false, false, false].slice(0, 5));
-          setHint(data.hint || '');
-          setXpValue(data.xpValue || 10);
+          setExerciseName(data.name || ''); // Atualiza o estado com o nome do exercício
+          setQuestion(data.question || ''); // Atualiza a pergunta
+          setOptions(data.options || ['']); // Atualiza as opções
+          setCorrectOptions(data.correctOptions || [false]); // Atualiza as opções corretas
+          setHint(data.hint || ''); // Atualiza a dica
+          setXpValue(data.xpValue || 10); // Atualiza o XP
         } else {
           console.error('Exercício não encontrado');
+          setError('Exercício não encontrado. Por favor, tente novamente.');
         }
       } catch (error) {
         console.error('Erro ao buscar exercício:', error);
+        setError('Erro ao buscar exercício. Verifique sua conexão e tente novamente.');
+      } finally {
+        setLoading(false);
       }
     };
     fetchExercise();
   }, [exerciseId]);
 
-  const updateExercise = async () => {
-    // Filtrar opções em branco
-    const filteredOptions = options.filter((option) => option.trim() !== '');
-    const filteredCorrectOptions = correctOptions.slice(0, filteredOptions.length);
+  // Função para atualizar o texto de uma opção específica
+  const handleOptionChange = (index: number, text: string) => {
+    setOptions((prevOptions) => {
+      const newOptions = [...prevOptions];
+      newOptions[index] = text;
+      return newOptions;
+    });
+  };
 
-    if (
-      exerciseName.trim() === '' ||
-      question.trim() === '' ||
-      filteredOptions.length < 2 ||
-      !filteredCorrectOptions.includes(true)
-    ) {
-      setError('Por favor, preencha todos os campos e selecione pelo menos uma opção correta.');
+  // Função para adicionar uma nova opção de resposta
+  const addOption = () => {
+    if (options.length >= 5) {
+      Alert.alert('Limite atingido', 'Você só pode adicionar até 5 opções.');
+      return;
+    }
+    setOptions([...options, '']); // Adiciona uma nova opção vazia
+    setCorrectOptions([...correctOptions, false]); // Adiciona uma marcação falsa para a nova opção
+  };
+
+  // Função para remover uma opção de resposta, mantendo o mínimo de duas
+  const removeOption = (index: number) => {
+    if (options.length > 2) {
+      const newOptions = [...options];
+      const newCorrectOptions = [...correctOptions];
+      newOptions.splice(index, 1);
+      newCorrectOptions.splice(index, 1);
+      setOptions(newOptions);
+      setCorrectOptions(newCorrectOptions);
+    }
+  };
+
+  // Função para atualizar o exercício no Firestore
+  const updateExercise = async () => {
+    // Filtragem das opções em branco e alinhamento com correctOptions
+    const filteredOptionsAndCorrectOptions = options.reduce(
+      (
+        acc: { options: string[]; correctOptions: boolean[] },
+        option: string,
+        index: number
+      ) => {
+        const trimmedOption = option.trim();
+        if (trimmedOption !== '') {
+          acc.options.push(trimmedOption);
+          acc.correctOptions.push(correctOptions[index]);
+        }
+        return acc;
+      },
+      { options: [], correctOptions: [] }
+    );
+
+    const { options: filteredOptions, correctOptions: filteredCorrectOptions } = filteredOptionsAndCorrectOptions;
+
+    // Validações dos campos obrigatórios
+    if (exerciseName.trim() === '') {
+      setError('Por favor, insira o nome do exercício.');
+      return;
+    }
+
+    if (question.trim() === '') {
+      setError('Por favor, insira a pergunta.');
+      return;
+    }
+
+    if (filteredOptions.length < 2) {
+      setError('Por favor, insira pelo menos duas opções.');
+      return;
+    }
+
+    if (!filteredCorrectOptions.includes(true)) {
+      setError('Por favor, selecione pelo menos uma opção correta.');
       return;
     }
 
@@ -89,21 +158,49 @@ export default function EditExerciseScreen() {
       });
       Alert.alert('Sucesso', 'Exercício atualizado com sucesso.', [
         {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
+          text: 'Ver Lista de Exercícios',
+          onPress: () => {
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 1,
+                routes: [
+                  { name: 'ProfessorDrawer' },
+                  { name: 'ProfessorExercises' },
+                ],
+              })
+            );
+          },
         },
-      ]);
+        {
+          text: 'Continuar Editando',
+          onPress: () => {},
+        },
+      ]);           
+      setError('');
     } catch (error) {
       console.error('Erro ao atualizar exercício:', error);
       setError('Ocorreu um erro ao atualizar o exercício. Tente novamente.');
     }
   };
 
+  // Retorno de uma tela de carregamento, caso o estado loading esteja verdadeiro
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+        <Header title="Editar Exercício" showBackButton />
+        <ActivityIndicator size="large" color="#4caf50" style={{ marginTop: 50 }} />
+      </SafeAreaView>
+    );
+  }
+
+  // Interface principal da tela de edição do exercício
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
       <Header title="Editar Exercício" showBackButton />
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Entrada para o nome do exercício */}
         <Text style={styles.label}>Nome do Exercício:</Text>
         <TextInput
           style={[styles.input, { height: 50 }]}
@@ -113,6 +210,7 @@ export default function EditExerciseScreen() {
           value={exerciseName}
         />
 
+        {/* Entrada para a pergunta do exercício */}
         <Text style={styles.label}>Pergunta:</Text>
         <TextInput
           style={[styles.input, { height: 100 }]}
@@ -124,18 +222,15 @@ export default function EditExerciseScreen() {
           value={question}
         />
 
-        <Text style={styles.label}>Opções(Mínimo 2):</Text>
+        {/* Campos de opções de resposta */}
+        <Text style={styles.label}>Opções (Mínimo 2):</Text>
         {options.map((option, index) => (
           <View key={index} style={styles.optionContainer}>
             <TextInput
               style={styles.optionInput}
               placeholder={`Opção ${index + 1}`}
               placeholderTextColor="#aaa"
-              onChangeText={(text) => {
-                const newOptions = [...options];
-                newOptions[index] = text;
-                setOptions(newOptions);
-              }}
+              onChangeText={(text) => handleOptionChange(index, text)}
               value={option}
             />
             <View style={styles.checkboxContainer}>
@@ -149,9 +244,22 @@ export default function EditExerciseScreen() {
               />
               <Text style={styles.checkboxLabel}>Correta</Text>
             </View>
+            {options.length > 2 && (
+              <TouchableOpacity
+                onPress={() => removeOption(index)}
+                style={styles.removeOptionButton}
+              >
+                <Text style={styles.removeOptionButtonText}>Remover</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
+        {/* Botão para adicionar nova opção */}
+        <TouchableOpacity onPress={addOption} style={styles.addOptionButton}>
+          <Text style={styles.addOptionButtonText}>Adicionar Opção</Text>
+        </TouchableOpacity>
 
+        {/* Seletor de valor de XP */}
         <Text style={styles.label}>Selecione o valor de XP:</Text>
         <View style={styles.pickerContainer}>
           <Picker
@@ -166,6 +274,7 @@ export default function EditExerciseScreen() {
           </Picker>
         </View>
 
+        {/* Entrada para a dica ou ajuda do exercício */}
         <Text style={styles.label}>Dica:</Text>
         <TextInput
           style={[styles.input, { height: 100 }]}
@@ -177,6 +286,7 @@ export default function EditExerciseScreen() {
           value={hint}
         />
 
+        {/* Mensagem de erro, se houver, e botão para atualizar o exercício */}
         {error !== '' && <Text style={styles.errorText}>{error}</Text>}
         <TouchableOpacity style={styles.button} onPress={updateExercise}>
           <Text style={styles.buttonText}>Atualizar Exercício</Text>
@@ -186,16 +296,14 @@ export default function EditExerciseScreen() {
   );
 }
 
+// Estilos aplicados à tela
 const styles = StyleSheet.create({
-  // Utilize os mesmos estilos do AddExerciseScreen
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    // Remova qualquer padding ou margin top
   },
   content: {
     padding: 20,
-    // Adicione um paddingTop para evitar sobreposição
     paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   label: {
@@ -210,7 +318,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
     color: '#333',
-    // height ajustável
   },
   optionContainer: {
     flexDirection: 'row',
@@ -235,6 +342,24 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontSize: 16,
     color: '#333',
+  },
+  removeOptionButton: {
+    marginLeft: 10,
+  },
+  removeOptionButtonText: {
+    color: 'red',
+    fontSize: 16,
+  },
+  addOptionButton: {
+    backgroundColor: '#4caf50',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  addOptionButtonText: {
+    color: '#fff',
+    fontSize: 16,
   },
   pickerContainer: {
     backgroundColor: '#eee',
