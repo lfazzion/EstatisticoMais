@@ -1,19 +1,16 @@
-// screens/ExerciseDetailScreen.tsx
-
-// Importação dos módulos e componentes necessários
-import React, { useEffect, useState, useMemo, useContext } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Modal,
   SafeAreaView,
   StatusBar,
-  Platform,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
   Text,
   Alert,
   ActivityIndicator,
+  Platform
 } from 'react-native';
 import Header from '../components/Header';
 import { firestore, auth } from '../firebaseConfig';
@@ -28,26 +25,26 @@ import {
   getDocs,
   runTransaction,
   DocumentReference,
+  DocumentSnapshot,
   DocumentData,
 } from 'firebase/firestore';
 import { RouteProp, useRoute, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import MixedText from '../components/MixedText'; // Componente para exibir texto misturado com LaTeX
-import { ThemeContext } from '../contexts/ThemeContext'; // Importa o contexto do tema
+import MixedText from '../components/MixedText';
 
-// Definição dos tipos de rota e navegação específicos da tela de detalhes do exercício
+// Define the route and navigation prop types
 type ExerciseDetailRouteProp = RouteProp<RootStackParamList, 'ExerciseDetail'>;
 type ExerciseDetailNavigationProp = StackNavigationProp<RootStackParamList, 'ExerciseDetail'>;
 
-// Interface para dados de um usuário, incluindo XP e nível
+// Interface for user data, including XP and level
 interface UserData {
   xp: number;
   level: number;
 }
 
-// Definição dos níveis e da quantidade de XP necessária para cada um
+// Define the XP needed for each level
 const levels = [
   { level: 1, xpNeeded: 0 },
   { level: 2, xpNeeded: 100 },
@@ -56,7 +53,7 @@ const levels = [
   { level: 5, xpNeeded: 1000 },
 ];
 
-// Interface para representar os dados de um exercício
+// Interface for the Exercise data
 interface Exercise {
   question: string;
   options: string[];
@@ -65,36 +62,32 @@ interface Exercise {
   xpValue: number;
 }
 
-// Componente principal da tela de detalhes do exercício
 export default function ExerciseDetailScreen() {
-  // Obtenção dos parâmetros da rota e inicialização do hook de navegação
+  // Extract route parameters and navigation hook
   const route = useRoute<ExerciseDetailRouteProp>();
-  const { exerciseId } = route.params; // ID do exercício
+  const { exerciseId } = route.params;
   const navigation = useNavigation<ExerciseDetailNavigationProp>();
 
-  // Obter o estado do modo escuro do contexto
-  const { darkModeEnabled } = useContext(ThemeContext);
+  // Define state variables
+  const [exercise, setExercise] = useState<Exercise | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<Set<number>>(new Set());
+  const [alreadyAnsweredCorrectly, setAlreadyAnsweredCorrectly] = useState<boolean>(false);
+  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [incorrectModalVisible, setIncorrectModalVisible] = useState<boolean>(false);
+  const [correctModalVisible, setCorrectModalVisible] = useState<boolean>(false);
+  const [submitted, setSubmitted] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
 
-  // Definição dos estados da tela
-  const [exercise, setExercise] = useState<Exercise | null>(null); // Dados do exercício
-  const [selectedOptions, setSelectedOptions] = useState<Set<number>>(new Set()); // Opções selecionadas pelo usuário
-  const [alreadyAnsweredCorrectly, setAlreadyAnsweredCorrectly] = useState<boolean>(false); // Flag de resposta correta anterior
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null); // Estado de correção da resposta
-  const [incorrectModalVisible, setIncorrectModalVisible] = useState<boolean>(false); // Controle de visibilidade do modal de resposta incorreta
-  const [correctModalVisible, setCorrectModalVisible] = useState<boolean>(false); // Controle de visibilidade do modal de resposta correta
-  const [submitted, setSubmitted] = useState<boolean>(false); // Indica se o exercício já foi submetido
-  const [loading, setLoading] = useState<boolean>(true); // Indicador de carregamento
-  const [saving, setSaving] = useState<boolean>(false); // Indicador de salvamento
-
-  // Memoriza o ID do exercício para evitar re-renderizações desnecessárias
+  // Memoize the exercise ID to prevent unnecessary re-renders
   const memoizedExerciseId = useMemo(() => exerciseId, [exerciseId]);
-  const [cachedExerciseData, setCachedExerciseData] = useState<{ [key: string]: Exercise }>({}); // Cache de dados do exercício
-  const [cachedAnsweredData, setCachedAnsweredData] = useState<{ [key: string]: boolean }>({}); // Cache de resposta correta do exercício
+  const [cachedExerciseData, setCachedExerciseData] = useState<{ [key: string]: Exercise }>({});
+  const [cachedAnsweredData, setCachedAnsweredData] = useState<{ [key: string]: boolean }>({});
 
-  // Busca os dados do exercício quando o componente é montado ou o ID do exercício muda
+  // Fetch exercise data when component mounts or exercise ID changes
   useEffect(() => {
     const fetchExercise = async () => {
-      // Verifica se os dados do exercício já estão no cache
+      // Check if exercise data is already cached
       if (cachedExerciseData[memoizedExerciseId]) {
         setExercise(cachedExerciseData[memoizedExerciseId]);
         setLoading(false);
@@ -102,21 +95,14 @@ export default function ExerciseDetailScreen() {
       }
       setLoading(true);
       try {
-        // Busca o documento do exercício no Firestore
+        // Fetch exercise document from Firestore
         const docRef = doc(firestore, 'exercises', memoizedExerciseId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const exerciseData = docSnap.data();
+          const exerciseData = docSnap.data() as Exercise;
           if (exerciseData && exerciseData.options && exerciseData.correctOptions) {
-            const formattedExercise: Exercise = {
-              question: exerciseData.question || '',
-              options: exerciseData.options,
-              correctOptions: exerciseData.correctOptions,
-              hint: exerciseData.hint,
-              xpValue: exerciseData.xpValue || 0,
-            };
-            setExercise(formattedExercise);
-            setCachedExerciseData((prev) => ({ ...prev, [memoizedExerciseId]: formattedExercise }));
+            setExercise(exerciseData);
+            setCachedExerciseData((prev) => ({ ...prev, [memoizedExerciseId]: exerciseData }));
           } else {
             console.error('Dados do exercício incompletos');
             setExercise(null);
@@ -133,9 +119,9 @@ export default function ExerciseDetailScreen() {
       }
     };
     fetchExercise();
-  }, [memoizedExerciseId]);
+  }, [memoizedExerciseId, cachedExerciseData]);
 
-  // Verifica se o usuário já respondeu corretamente ao exercício
+  // Check if the user has already answered the exercise correctly
   useEffect(() => {
     const checkIfAnsweredCorrectly = async () => {
       if (cachedAnsweredData[memoizedExerciseId] !== undefined) {
@@ -145,7 +131,7 @@ export default function ExerciseDetailScreen() {
       try {
         const user = auth.currentUser;
         if (user) {
-          // Consulta no Firestore se o usuário já respondeu corretamente
+          // Query Firestore for correct answers by the user
           const q = query(
             collection(firestore, 'results'),
             where('exerciseId', '==', memoizedExerciseId),
@@ -162,9 +148,9 @@ export default function ExerciseDetailScreen() {
       }
     };
     checkIfAnsweredCorrectly();
-  }, [memoizedExerciseId]);
+  }, [memoizedExerciseId, cachedAnsweredData]);
 
-  // Alterna a seleção de uma opção
+  // Toggle selection of an option
   const toggleOption = (index: number) => {
     setSelectedOptions((prevSelected) => {
       const newSelected = new Set(prevSelected);
@@ -177,29 +163,29 @@ export default function ExerciseDetailScreen() {
     });
   };
 
-  // Função para submeter a resposta do usuário
+  // Handle answer submission
   const submitAnswer = async () => {
-    if (!exercise) return; // Verifica se o exercício foi carregado
+    if (!exercise) return; // Ensure exercise is loaded
 
     if (selectedOptions.size === 0) {
       Alert.alert('Selecione uma opção', 'Por favor, selecione pelo menos uma opção antes de enviar.');
       return;
     }
 
-    // Determina as opções corretas com base nos dados do exercício
+    // Determine the correct options based on the exercise data
     const correctOptionIndices = exercise.correctOptions
       .map((isCorrect: boolean, index: number) => (isCorrect ? index : null))
       .filter((index): index is number => index !== null);
 
-    // Verifica se as opções selecionadas correspondem às corretas
+    // Check if the selected options match the correct ones
     const isCorrectAnswer =
       selectedOptions.size === correctOptionIndices.length &&
       Array.from(selectedOptions).every((value) => correctOptionIndices.includes(value));
 
     setIsCorrect(isCorrectAnswer);
-    setSubmitted(true); // Marca como enviado
+    setSubmitted(true); // Mark as submitted
 
-    // Salva o resultado no Firestore
+    // Save the result to Firestore
     setSaving(true);
     try {
       const user = auth.currentUser;
@@ -210,7 +196,7 @@ export default function ExerciseDetailScreen() {
 
         while (!success && retryCount < maxRetries) {
           try {
-            // Adiciona o resultado no Firestore
+            // Add result to Firestore
             await addDoc(collection(firestore, 'results'), {
               exerciseId: memoizedExerciseId,
               isCorrect: isCorrectAnswer,
@@ -228,7 +214,7 @@ export default function ExerciseDetailScreen() {
           }
         }
 
-        // Se a resposta for correta e não houver resposta correta anterior, adiciona XP
+        // If correct answer and not previously answered correctly, add XP
         if (isCorrectAnswer && !alreadyAnsweredCorrectly) {
           const userRef = doc(firestore, 'users', user.uid);
           await updateXp(userRef, exercise.xpValue);
@@ -241,7 +227,7 @@ export default function ExerciseDetailScreen() {
       setSaving(false);
     }
 
-    // Exibe o modal apropriado com base na correção da resposta
+    // Show the appropriate modal based on the answer correctness
     if (isCorrectAnswer) {
       setCorrectModalVisible(true);
     } else {
@@ -249,7 +235,7 @@ export default function ExerciseDetailScreen() {
     }
   };
 
-  // Atualiza o XP e o nível do usuário no Firestore
+  // Update the user's XP and level
   const updateXp = async (userRef: DocumentReference<DocumentData>, xpToAdd: number) => {
     try {
       await runTransaction(firestore, async (transaction) => {
@@ -258,18 +244,15 @@ export default function ExerciseDetailScreen() {
           throw new Error('Usuário não existe!');
         }
 
-        const userData = userDoc.data() as Partial<UserData>;
+        const userData = userDoc.data() as UserData;
 
-        // Obtém o XP e nível atuais, com valores padrão se não existirem
+        // Calculate new XP and level
         const currentXp = userData.xp || 0;
-        const currentLevel = userData.level || 1;
-
-        // Calcula o novo XP e nível
         const newXp = currentXp + xpToAdd;
         const newLevel = calculateLevel(newXp);
 
-        // Atualiza o Firestore apenas se houver mudança
-        if (newXp !== currentXp || newLevel !== currentLevel) {
+        // Update Firestore only if values have changed
+        if (newXp !== currentXp || newLevel !== userData.level) {
           transaction.update(userRef, {
             xp: newXp,
             level: newLevel,
@@ -281,7 +264,7 @@ export default function ExerciseDetailScreen() {
     }
   };
 
-  // Calcula o nível do usuário com base no XP
+  // Calculate the user's level based on their XP
   const calculateLevel = (xp: number): number => {
     let currentLevel = levels[levels.length - 1].level;
     for (let i = 0; i < levels.length; i++) {
@@ -293,90 +276,80 @@ export default function ExerciseDetailScreen() {
     return currentLevel;
   };
 
-  // Exibe o modal de dica
+  // Show the hint modal
   const showHint = () => {
     setIncorrectModalVisible(false);
-    resetSelections(); // Limpa as seleções ao exibir a dica
+    resetSelections(); // Clear selections when showing the hint
     navigation.navigate('Hint', { hint: exercise?.hint || 'Nenhuma dica disponível.' });
   };
 
-  // Fecha o modal de resposta incorreta
+  // Close the incorrect answer modal
   const closeModal = () => {
     setIncorrectModalVisible(false);
-    resetSelections(); // Limpa as seleções ao fechar o modal
+    resetSelections(); // Clear selections when closing the modal
   };
 
-  // Fecha o modal de resposta correta
+  // Close the correct answer modal
   const closeCorrectModal = () => {
     setCorrectModalVisible(false);
-    resetSelections(); // Limpa as seleções ao fechar o modal de resposta correta
-    navigation.goBack(); // Volta para a tela anterior
+    resetSelections(); // Reset selections when closing the correct answer modal
+    navigation.goBack(); // Go back to the previous screen
   };
 
-  // Limpa as seleções e os estados relacionados à resposta
+  // Reset selections and states related to the answer
   const resetSelections = () => {
     setSelectedOptions(new Set());
-    setSubmitted(false); // Permite que o usuário tente novamente
-    setIsCorrect(null); // Reseta o estado de resposta
+    setSubmitted(false); // Allow the student to try again
+    setIsCorrect(null); // Reset answer state
   };
 
-  // Exibe um indicador de carregamento enquanto busca os dados do exercício
+  // Display loading indicator while fetching exercise data
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, darkModeEnabled ? styles.darkContainer : styles.lightContainer]}>
-        <StatusBar
-          barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
-          backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
-        />
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
         <Header title="Carregando..." showBackButton />
         <View style={styles.content}>
-          <ActivityIndicator size="large" color={darkModeEnabled ? '#fff' : '#4caf50'} />
+          <ActivityIndicator size="large" color="#4caf50" />
         </View>
       </SafeAreaView>
     );
   }
 
-  // Exibe uma mensagem caso o exercício não seja encontrado
+  // Display a message if the exercise is not found
   if (!exercise) {
     return (
-      <SafeAreaView style={[styles.container, darkModeEnabled ? styles.darkContainer : styles.lightContainer]}>
-        <StatusBar
-          barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
-          backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
-        />
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
         <Header title="Exercício não encontrado" showBackButton />
         <View style={styles.content}>
-          <Text style={darkModeEnabled ? styles.darkText : styles.lightText}>Exercício não encontrado.</Text>
+          <Text>Exercício não encontrado.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Determina o estilo de cada opção com base no seu estado
+  // Determine the style for each option based on its state
   const optionStyle = (index: number) => {
     const isSelected = selectedOptions.has(index);
 
-    // Destaca opções incorretas em vermelho se a resposta estiver incorreta
+    // Highlight incorrect options in red if the answer was submitted and incorrect
     if (submitted && isCorrect === false && isSelected) {
       return [styles.optionButton, styles.incorrectOption];
     }
 
-    // Destaca opções corretas em verde se a resposta estiver correta
+    // Highlight correct options in green if the answer was submitted and correct
     if (submitted && isCorrect === true && isSelected) {
       return [styles.optionButton, styles.correctOption];
     }
 
-    // Estilo padrão para opções
+    // Default style for options
     return [styles.optionButton, isSelected && styles.selectedOption];
   };
 
-  // Interface da tela principal do exercício
   return (
-    <SafeAreaView style={[styles.container, darkModeEnabled ? styles.darkContainer : styles.lightContainer]}>
-      <StatusBar
-        barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
-        backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
-      />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
       <Header
         title="Detalhes do Exercício"
         showBackButton
@@ -387,11 +360,8 @@ export default function ExerciseDetailScreen() {
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Utilização do MixedText para renderizar a pergunta com texto e LaTeX */}
-        <MixedText
-          content={exercise.question}
-          style={[styles.question, darkModeEnabled ? styles.darkText : styles.lightText]}
-        />
+        {/* Utilizando o MixedText para renderizar a pergunta com texto e LaTeX */}
+        <MixedText content={exercise.question} style={styles.question} />
 
         {exercise.options.map((option: string, index: number) => (
           <TouchableOpacity
@@ -399,18 +369,11 @@ export default function ExerciseDetailScreen() {
             style={optionStyle(index)}
             onPress={() => toggleOption(index)}
           >
-            <MixedText
-              content={option}
-              style={[styles.optionText, darkModeEnabled ? styles.darkText : styles.lightText]}
-            />
+            <MixedText content={option} style={styles.optionText} />
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity
-          style={[styles.button, darkModeEnabled ? styles.darkButton : styles.lightButton]}
-          onPress={submitAnswer}
-          disabled={saving}
-        >
+        <TouchableOpacity style={styles.button} onPress={submitAnswer} disabled={saving}>
           {saving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
@@ -419,7 +382,7 @@ export default function ExerciseDetailScreen() {
         </TouchableOpacity>
 
         {alreadyAnsweredCorrectly && (
-          <Text style={[styles.infoText, darkModeEnabled ? styles.darkText : styles.lightText]}>
+          <Text style={styles.infoText}>
             Você já acertou este exercício.
             {'\n'}
             Não será ganho XP adicional.
@@ -434,18 +397,11 @@ export default function ExerciseDetailScreen() {
           onRequestClose={closeCorrectModal}
         >
           <View style={styles.modalBackground}>
-            <View style={[styles.modalContainer, darkModeEnabled ? styles.darkModal : styles.lightModal]}>
-              <Text style={[styles.modalTitle, darkModeEnabled ? styles.darkText : styles.lightText]}>
-                Resposta Correta!
-              </Text>
-              <Text style={[styles.modalMessage, darkModeEnabled ? styles.darkText : styles.lightText]}>
-                Parabéns, você acertou!
-              </Text>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Resposta Correta!</Text>
+              <Text style={styles.modalMessage}>Parabéns, você acertou!</Text>
               <View style={styles.modalButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.modalButton, darkModeEnabled ? styles.darkButton : styles.lightButton]}
-                  onPress={closeCorrectModal}
-                >
+                <TouchableOpacity style={styles.modalButton} onPress={closeCorrectModal}>
                   <Text style={styles.modalButtonText}>Fechar</Text>
                 </TouchableOpacity>
               </View>
@@ -461,24 +417,14 @@ export default function ExerciseDetailScreen() {
           onRequestClose={closeModal}
         >
           <View style={styles.modalBackground}>
-            <View style={[styles.modalContainer, darkModeEnabled ? styles.darkModal : styles.lightModal]}>
-              <Text style={[styles.modalTitle, darkModeEnabled ? styles.darkText : styles.lightText]}>
-                Resposta Incorreta
-              </Text>
-              <Text style={[styles.modalMessage, darkModeEnabled ? styles.darkText : styles.lightText]}>
-                Não foi dessa vez. Gostaria de ver a dica?
-              </Text>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Resposta Incorreta</Text>
+              <Text style={styles.modalMessage}>Não foi dessa vez. Gostaria de ver a dica?</Text>
               <View style={styles.modalButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.modalButton, darkModeEnabled ? styles.darkButton : styles.lightButton]}
-                  onPress={closeModal}
-                >
+                <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
                   <Text style={styles.modalButtonText}>Fechar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.modalButton, darkModeEnabled ? styles.darkButton : styles.lightButton]}
-                  onPress={showHint}
-                >
+                <TouchableOpacity style={styles.modalButton} onPress={showHint}>
                   <Text style={styles.modalButtonText}>Ver Dica</Text>
                 </TouchableOpacity>
               </View>
@@ -490,33 +436,23 @@ export default function ExerciseDetailScreen() {
   );
 }
 
-// Estilos da tela
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  lightContainer: {
     backgroundColor: '#fff',
-  },
-  darkContainer: {
-    backgroundColor: '#333',
   },
   content: {
     flexGrow: 1,
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight || 0,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   question: {
     marginBottom: 20,
     fontSize: 18,
-  },
-  lightText: {
     color: '#333',
   },
-  darkText: {
-    color: '#fff',
-  },
   optionButton: {
+    backgroundColor: '#eee',
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
@@ -535,18 +471,14 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
+    color: '#333',
   },
   button: {
+    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
     marginVertical: 20,
-  },
-  lightButton: {
-    backgroundColor: '#4caf50',
-  },
-  darkButton: {
-    backgroundColor: '#006400',
   },
   buttonText: {
     color: '#fff',
@@ -571,15 +503,10 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '80%',
+    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 20,
     alignItems: 'center',
-  },
-  lightModal: {
-    backgroundColor: '#fff',
-  },
-  darkModal: {
-    backgroundColor: '#555',
   },
   modalTitle: {
     fontSize: 20,
@@ -596,6 +523,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   modalButton: {
+    backgroundColor: '#4caf50',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,

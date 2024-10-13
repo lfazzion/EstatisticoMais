@@ -1,6 +1,6 @@
 // screens/AddExerciseScreen.tsx
-// Importação de módulos e componentes necessários para o funcionamento da tela
-import React, { useState } from 'react';
+
+import React, { useState, useContext } from 'react';
 import {
   View,
   TextInput,
@@ -22,6 +22,7 @@ import { Picker } from '@react-native-picker/picker';
 import Checkbox from 'expo-checkbox';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { ProfessorDrawerParamList } from '../types/navigation';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 // Constante para o valor padrão de XP a ser atribuído ao exercício
 const DEFAULT_XP_VALUE = 10;
@@ -43,6 +44,9 @@ export default function AddExerciseScreen() {
 
   // Obtenção do objeto de navegação para redirecionamento
   const navigation = useNavigation<AddExerciseNavigationProp>();
+
+  // Obter o estado do modo escuro do contexto
+  const { darkModeEnabled } = useContext(ThemeContext);
 
   // Função para atualizar o texto de uma opção específica, com base no índice
   const handleOptionChange = (index: number, text: string) => {
@@ -161,29 +165,46 @@ export default function AddExerciseScreen() {
     }
   };
 
+  // Função para obter estilo condicional com base no modo escuro/claro
+  const getConditionalStyle = (lightStyle: any, darkStyle: any) => {
+    return darkModeEnabled ? darkStyle : lightStyle; // Retorna o estilo apropriado com base no tema
+  };
+
   // Retorna a estrutura da interface da tela
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+    <SafeAreaView style={[styles.container, getConditionalStyle(styles.lightContainer, styles.darkContainer)]}>
+      {/* Configura a barra de status com estilo condicional */}
+      <StatusBar
+        barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
+        backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+      />
       <Header title="Adicionar Exercício" showBackButton />
       <ScrollView contentContainerStyle={styles.content}>
         {/* Entrada de texto para o nome do exercício */}
-        <Text style={styles.label}>Nome do Exercício:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Nome do Exercício:</Text>
         <TextInput
-          style={[styles.input, { height: 50 }]}
+          style={[
+            styles.input,
+            getConditionalStyle(styles.lightInput, styles.darkInput),
+            { height: 50 },
+          ]}
           placeholder="Digite o nome do exercício"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
           onChangeText={(text) => setExerciseName(text)}
           value={exerciseName}
           editable={!loading}
         />
 
         {/* Entrada de texto para a pergunta do exercício */}
-        <Text style={styles.label}>Pergunta:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Pergunta:</Text>
         <TextInput
-          style={[styles.input, { height: 100 }]}
+          style={[
+            styles.input,
+            getConditionalStyle(styles.lightInput, styles.darkInput),
+            { height: 100 },
+          ]}
           placeholder="Digite a pergunta"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
           multiline
           numberOfLines={4}
           onChangeText={(text) => setQuestion(text)}
@@ -192,13 +213,16 @@ export default function AddExerciseScreen() {
         />
 
         {/* Opções de resposta, podendo adicionar e remover */}
-        <Text style={styles.label}>Opções (Mínimo 2):</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Opções (Mínimo 2):</Text>
         {options.map((option, index) => (
           <View key={index} style={styles.optionContainer}>
             <TextInput
-              style={styles.optionInput}
+              style={[
+                styles.optionInput,
+                getConditionalStyle(styles.lightInput, styles.darkInput),
+              ]}
               placeholder={`Opção ${index + 1}`}
-              placeholderTextColor="#aaa"
+              placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
               onChangeText={(text) => handleOptionChange(index, text)}
               value={option}
               editable={!loading}
@@ -212,8 +236,11 @@ export default function AddExerciseScreen() {
                   setCorrectOptions(newCorrectOptions);
                 }}
                 disabled={loading}
+                color={correctOptions[index] ? '#4caf50' : undefined}
               />
-              <Text style={styles.checkboxLabel}>Correta</Text>
+              <Text style={[styles.checkboxLabel, getConditionalStyle(styles.lightText, styles.darkText)]}>
+                Correta
+              </Text>
             </View>
             {options.length > 2 && (
               <TouchableOpacity
@@ -230,33 +257,52 @@ export default function AddExerciseScreen() {
         <TouchableOpacity
           onPress={addOption}
           disabled={loading}
-          style={styles.addOptionButton}
+          style={[
+            styles.addOptionButton,
+            getConditionalStyle(styles.lightButton, styles.darkButton),
+          ]}
         >
           <Text style={styles.addOptionButtonText}>Adicionar Opção</Text>
         </TouchableOpacity>
 
         {/* Seletor para o valor de XP do exercício */}
-        <Text style={styles.label}>Selecione o valor de XP:</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={xpValue}
-            onValueChange={(itemValue) => setXpValue(itemValue)}
-            style={styles.picker}
-            enabled={!loading}
-          >
-            <Picker.Item label="+10XP (Fácil)" value={10} />
-            <Picker.Item label="+20XP (Médio)" value={20} />
-            <Picker.Item label="+30XP (Difícil)" value={30} />
-            <Picker.Item label="+50XP (Muito Difícil)" value={50} />
-          </Picker>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Selecione o valor de XP:</Text>
+        <View
+          style={[
+            styles.pickerContainer,
+            getConditionalStyle(styles.lightPickerContainer, styles.darkPickerContainer),
+          ]}
+        >
+          <View style={[
+            styles.pickerWrapper,
+            { backgroundColor: darkModeEnabled ? '#555' : '#eee' } // Ajuste dinâmico da cor de fundo
+          ]}>
+            <Picker
+              selectedValue={xpValue}
+              onValueChange={(itemValue) => setXpValue(itemValue)}
+              style={styles.picker}
+              dropdownIconColor={darkModeEnabled ? '#fff' : '#333'}
+              enabled={!loading}
+              itemStyle={Platform.OS === 'ios' ? styles.pickerItemIOS : {}}
+            >
+              <Picker.Item label="+10XP (Fácil)" value={10} />
+              <Picker.Item label="+20XP (Médio)" value={20} />
+              <Picker.Item label="+30XP (Difícil)" value={30} />
+              <Picker.Item label="+50XP (Muito Difícil)" value={50} />
+            </Picker>
+          </View>
         </View>
 
         {/* Entrada de texto para a dica do exercício */}
-        <Text style={styles.label}>Dica:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Dica:</Text>
         <TextInput
-          style={[styles.input, { height: 100 }]}
+          style={[
+            styles.input,
+            getConditionalStyle(styles.lightInput, styles.darkInput),
+            { height: 100 },
+          ]}
           placeholder="Explicação ou fórmulas a serem utilizadas"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
           multiline
           numberOfLines={4}
           onChangeText={(text) => setHint(text)}
@@ -265,11 +311,21 @@ export default function AddExerciseScreen() {
         />
 
         {/* Exibição de mensagens de erro ou um indicador de carregamento */}
-        {error !== '' && <Text style={styles.errorText}>{error}</Text>}
+        {error !== '' && (
+          <Text style={[styles.errorText, getConditionalStyle(styles.lightErrorText, styles.darkErrorText)]}>
+            {error}
+          </Text>
+        )}
         {loading ? (
           <ActivityIndicator size="large" color="#4caf50" />
         ) : (
-          <TouchableOpacity style={styles.button} onPress={addExercise}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              getConditionalStyle(styles.lightButton, styles.darkButton),
+            ]}
+            onPress={addExercise}
+          >
             <Text style={styles.buttonText}>Salvar Exercício</Text>
           </TouchableOpacity>
         )}
@@ -282,7 +338,12 @@ export default function AddExerciseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  lightContainer: {
     backgroundColor: '#fff',
+  },
+  darkContainer: {
+    backgroundColor: '#333',
   },
   content: {
     padding: 20,
@@ -293,13 +354,25 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 5,
   },
+  lightText: {
+    color: '#333',
+  },
+  darkText: {
+    color: '#fff',
+  },
   input: {
-    backgroundColor: '#eee',
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
     marginBottom: 10,
+  },
+  lightInput: {
+    backgroundColor: '#eee',
     color: '#333',
+  },
+  darkInput: {
+    backgroundColor: '#555',
+    color: '#fff',
   },
   optionContainer: {
     flexDirection: 'row',
@@ -308,12 +381,12 @@ const styles = StyleSheet.create({
   },
   optionInput: {
     flex: 1,
-    backgroundColor: '#eee',
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
-    color: '#333',
-    height: 50,
+    marginRight: 10,
+    height: 50, // Mantém a altura original
+    backgroundColor: 'transparent', // Evita sobreposição de cores
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -323,7 +396,6 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     marginLeft: 5,
     fontSize: 16,
-    color: '#333',
   },
   removeOptionButton: {
     marginLeft: 10,
@@ -333,7 +405,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   addOptionButton: {
-    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
@@ -343,18 +414,47 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
+  lightButton: {
+    backgroundColor: '#4caf50',
+  },
+  darkButton: {
+    backgroundColor: '#006400',
+  },
   pickerContainer: {
-    backgroundColor: '#eee',
     borderRadius: 8,
     marginBottom: 15,
+    overflow: 'hidden',
+    justifyContent: 'center', // Alinha verticalmente o Picker
+    paddingHorizontal: 5, // Adiciona padding lateral para melhor apresentação
+    ...(Platform.OS === 'ios' ? { height: 60, paddingVertical: 5 } : {}), // Ajustes específicos para iOS
+  },
+  lightPickerContainer: {
+    backgroundColor: '#eee',
+  },
+  darkPickerContainer: {
+    backgroundColor: '#555',
+  },
+  pickerWrapper: {
+    justifyContent: 'center',
+    alignItems: 'center', // Garante que o Picker seja centralizado dentro do contêiner
+    borderRadius: 8,
+    backgroundColor: '#555', // Será ajustado dinamicamente no JSX
+    height: 50, // Certifique-se de que a altura seja a mesma que os outros elementos
+    paddingHorizontal: 10, // Adiciona um padding lateral para melhorar a estética
   },
   picker: {
     width: '100%',
-    height: 50,
-    color: '#333',
+    height: '100%', // Use a altura total do contêiner para garantir consistência
+    paddingVertical: 5, // Ajuste o padding para centralizar melhor o texto
+    justifyContent: 'center',
+  },
+  pickerItemIOS: {
+    fontSize: 16,
+    color: '#fff', // Será ajustado dinamicamente
+    height: 50, // Consistente com a altura do Picker
+    textAlign: 'center', // Centraliza o texto verticalmente no item
   },
   button: {
-    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
@@ -365,8 +465,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   errorText: {
-    color: 'red',
     marginTop: 10,
     textAlign: 'center',
+  },
+  lightErrorText: {
+    color: 'red',
+  },
+  darkErrorText: {
+    color: '#ff6666',
   },
 });

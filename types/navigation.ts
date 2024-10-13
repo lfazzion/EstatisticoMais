@@ -34,6 +34,7 @@ export type AlunoDrawerParamList = {
 export type ProfessorDrawerParamList = {
   ProfessorHome: undefined;
   ProfessorExercises: undefined;
+  AddExercise: undefined;
   Profile: undefined;
   Settings: undefined;
 };
