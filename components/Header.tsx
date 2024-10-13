@@ -9,35 +9,53 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 interface HeaderProps {
   title: string;
   showBackButton?: boolean;
+  onBackPress?: () => void;
   rightButton?: React.ReactNode;
 }
 
-export default function Header({ title, showBackButton = false, rightButton }: HeaderProps) {
+export default function Header({ title, showBackButton = false, onBackPress, rightButton }: HeaderProps) {
   const navigation = useNavigation<DrawerNavigationProp<any>>();
 
-  const openMenu = () => {
+  const handlePress = () => {
     if (showBackButton) {
-      navigation.goBack();
+      if (onBackPress) {
+        onBackPress();
+      } else {
+        navigation.goBack();
+      }
     } else {
       navigation.openDrawer();
     }
   };
 
-  const openProfile = () => {
-    navigation.navigate('Profile');
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={openMenu}>
+        <TouchableOpacity
+          onPress={handlePress}
+          style={styles.iconButton}
+          accessibilityLabel={showBackButton ? 'Voltar' : 'Abrir menu'}
+          accessibilityRole="button"
+        >
           <Ionicons name={showBackButton ? 'arrow-back' : 'menu'} size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerText}>{title}</Text>
         {rightButton ? (
-          rightButton
+          <TouchableOpacity
+            onPress={() => {}}
+            style={styles.iconButton}
+            accessibilityLabel="Ação personalizada"
+            accessibilityRole="button"
+          >
+            {rightButton}
+          </TouchableOpacity>
         ) : (
-          <TouchableOpacity onPress={openProfile}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Profile')}
+            style={styles.iconButton}
+            accessibilityLabel="Perfil"
+            accessibilityRole="button"
+          >
             <Ionicons name="person-circle" size={28} color="#fff" />
           </TouchableOpacity>
         )}
@@ -62,5 +80,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  iconButton: {
+    padding: 5,
   },
 });

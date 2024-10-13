@@ -1,5 +1,5 @@
 // screens/ExerciseListScreen.tsx
-// Importações necessárias
+
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View,
@@ -22,7 +22,6 @@ import {
   where,
   orderBy,
   doc,
-  setDoc,
   onSnapshot,
   runTransaction,
 } from 'firebase/firestore';
@@ -31,22 +30,19 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// Constante para a altura dos itens no FlatList
-const ITEM_HEIGHT = 70; // Ajuste conforme necessário
+const ITEM_HEIGHT = 70;
 
-// Interfaces definindo o formato dos dados
 interface Professor {
-  uid: string; // Identificador único do professor
-  name: string; // Nome do professor
+  uid: string;
+  name: string;
 }
 
 interface Exercise {
-  id: string; // Identificador único do exercício
-  question: string; // Texto da questão do exercício
-  xpValue: number; // Valor de XP atribuído ao exercício
+  id: string;
+  question: string;
+  xpValue: number;
 }
 
-// Função auxiliar para tratar erros ao atualizar favoritos
 const handleFavoriteError = (error: any) => {
   console.error('Erro ao atualizar favoritos:', error);
   if (error.code === 'permission-denied') {
@@ -64,31 +60,30 @@ const handleFavoriteError = (error: any) => {
   }
 };
 
-// Componente ProfessorItem memorizado para otimização
 interface ProfessorItemProps {
-  professor: Professor; // Dados do professor
-  isFavorite: boolean; // Indicador se o professor é favorito
-  onSelect: (professor: Professor) => void; // Função ao selecionar o professor
-  onToggleFavorite: (uid: string) => void; // Função para alternar o favorito
+  professor: Professor;
+  isFavorite: boolean;
+  onSelect: (professor: Professor) => void;
+  onToggleFavorite: (uid: string) => void;
 }
 
 const ProfessorItem: React.FC<ProfessorItemProps> = React.memo(
   ({ professor, isFavorite, onSelect, onToggleFavorite }) => (
     <TouchableOpacity
       style={styles.professorItem}
-      onPress={() => onSelect(professor)} // Seleciona o professor
+      onPress={() => onSelect(professor)}
       accessibilityLabel={`Selecionar professor ${professor.name}`}
       accessibilityRole="button"
     >
       <Text style={styles.professorText}>{professor.name}</Text>
       <TouchableOpacity
-        onPress={() => onToggleFavorite(professor.uid)} // Alterna o favorito do professor
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} // Área de clique expandida
+        onPress={() => onToggleFavorite(professor.uid)}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityLabel={`Favoritar professor ${professor.name}`}
         accessibilityRole="button"
       >
         <Ionicons
-          name={isFavorite ? 'star' : 'star-outline'} // Ícone de estrela (favorito)
+          name={isFavorite ? 'star' : 'star-outline'}
           size={24}
           color={isFavorite ? 'gold' : 'black'}
         />
@@ -97,41 +92,38 @@ const ProfessorItem: React.FC<ProfessorItemProps> = React.memo(
   )
 );
 
-// Componente ExerciseItem memorizado para otimização
 interface ExerciseItemProps {
-  exercise: Exercise; // Dados do exercício
-  isAnsweredCorrectly: boolean; // Indicador se o exercício foi respondido corretamente
-  onSelect: (exerciseId: string) => void; // Função ao selecionar o exercício
+  exercise: Exercise;
+  isAnsweredCorrectly: boolean;
+  onSelect: (exerciseId: string) => void;
 }
 
 const ExerciseItem: React.FC<ExerciseItemProps> = React.memo(
   ({ exercise, isAnsweredCorrectly, onSelect }) => (
     <TouchableOpacity
       style={styles.exerciseItem}
-      onPress={() => onSelect(exercise.id)} // Seleciona o exercício
+      onPress={() => onSelect(exercise.id)}
       accessibilityLabel={`Selecionar exercício ${exercise.question}`}
       accessibilityRole="button"
     >
       <Text style={styles.exerciseText}>{exercise.question}</Text>
-      {isAnsweredCorrectly && <Text style={styles.xpText}>+{exercise.xpValue}XP</Text>} {/* Exibe o XP se respondido corretamente */}
+      {isAnsweredCorrectly && <Text style={styles.xpText}>+{exercise.xpValue}XP</Text>}
     </TouchableOpacity>
   )
 );
 
-// Componente principal da tela de lista de exercícios
 export default function ExerciseListScreen() {
-  const [professors, setProfessors] = useState<Professor[]>([]); // Estado para armazenar a lista de professores
-  const [favoriteProfessors, setFavoriteProfessors] = useState<string[]>([]); // Estado para armazenar os professores favoritos
-  const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null); // Estado para armazenar o professor selecionado
-  const [exercises, setExercises] = useState<Exercise[]>([]); // Estado para armazenar a lista de exercícios
-  const [answeredExercises, setAnsweredExercises] = useState<string[]>([]); // Estado para armazenar os exercícios respondidos corretamente
-  const [loadingProfessors, setLoadingProfessors] = useState<boolean>(true); // Estado de carregamento dos professores
-  const [loadingExercises, setLoadingExercises] = useState<boolean>(false); // Estado de carregamento dos exercícios
-  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>(); // Obter a navegação
+  const [professors, setProfessors] = useState<Professor[]>([]);
+  const [favoriteProfessors, setFavoriteProfessors] = useState<string[]>([]);
+  const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [answeredExercises, setAnsweredExercises] = useState<string[]>([]);
+  const [loadingProfessors, setLoadingProfessors] = useState<boolean>(true);
+  const [loadingExercises, setLoadingExercises] = useState<boolean>(false);
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  
+  const exercisesCache = useRef<{ [key: string]: Exercise[] }>({});
 
-  const exercisesCache = useRef<{ [key: string]: Exercise[] }>({}); // Cache para armazenar exercícios já carregados
-
-  // Função para alternar favorito
   const toggleFavorite = useCallback(async (professorUid: string) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -146,24 +138,20 @@ export default function ExerciseListScreen() {
           const data = docSnap.data();
           const professors: string[] = data.professors || [];
           if (professors.includes(professorUid)) {
-            // Remover dos favoritos
             updatedFavorites = professors.filter((uid) => uid !== professorUid);
           } else {
-            // Adicionar aos favoritos
             updatedFavorites = [...professors, professorUid];
           }
         } else {
-          // Documento não existe, adicionar o professor como favorito
           updatedFavorites = [professorUid];
         }
         transaction.set(docRef, { professors: updatedFavorites });
       });
     } catch (error: any) {
-      handleFavoriteError(error); // Tratar erro ao alternar favoritos
+      handleFavoriteError(error);
     }
   }, []);
 
-  // useEffect para gerenciar favoritos
   useEffect(() => {
     let unsubscribeFavorites: (() => void) | undefined;
 
@@ -175,9 +163,9 @@ export default function ExerciseListScreen() {
           (docSnap) => {
             if (docSnap.exists()) {
               const data = docSnap.data();
-              setFavoriteProfessors(data.professors || []); // Atualiza os favoritos
+              setFavoriteProfessors(data.professors || []);
             } else {
-              setFavoriteProfessors([]); // Nenhum favorito encontrado
+              setFavoriteProfessors([]);
             }
           },
           (error) => {
@@ -185,21 +173,20 @@ export default function ExerciseListScreen() {
           }
         );
       } else {
-        setFavoriteProfessors([]); // Limpa os favoritos se o usuário sair
+        setFavoriteProfessors([]);
       }
     });
 
     return () => {
-      unsubscribeAuth(); // Desinscreve do listener de autenticação
+      unsubscribeAuth();
       if (unsubscribeFavorites) {
-        unsubscribeFavorites(); // Desinscreve do listener de favoritos
+        unsubscribeFavorites();
       }
     };
   }, []);
 
-  // Listener para professores
   useEffect(() => {
-    setLoadingProfessors(true); // Inicia o carregamento dos professores
+    setLoadingProfessors(true);
     const q = query(
       collection(firestore, 'users'),
       where('userType', '==', 'Professor'),
@@ -215,12 +202,12 @@ export default function ExerciseListScreen() {
           const data = doc.data();
           professorsData.push({ uid: doc.id, name: data.name || 'Professor' });
         });
-        setProfessors(professorsData); // Atualiza a lista de professores
-        setLoadingProfessors(false); // Conclui o carregamento
+        setProfessors(professorsData);
+        setLoadingProfessors(false);
       },
       (error) => {
         console.error('Erro ao buscar professores:', error);
-        setLoadingProfessors(false); // Conclui o carregamento mesmo em caso de erro
+        setLoadingProfessors(false);
         Alert.alert(
           'Erro',
           'Não foi possível carregar a lista de professores. Por favor, tente novamente mais tarde.'
@@ -229,27 +216,25 @@ export default function ExerciseListScreen() {
     );
 
     return () => {
-      unsubscribeProfessors(); // Desinscreve do listener de professores
+      unsubscribeProfessors();
     };
   }, []);
 
-  // Memoização de sortedProfessors
   const sortedProfessors = useMemo(() => {
-    const favoriteSet = new Set(favoriteProfessors); // Conjunto de professores favoritos
+    const favoriteSet = new Set(favoriteProfessors);
     return professors.slice().sort((a, b) => {
       const aIsFavorite = favoriteSet.has(a.uid);
       const bIsFavorite = favoriteSet.has(b.uid);
       if (aIsFavorite === bIsFavorite) {
-        return a.name.localeCompare(b.name); // Ordena alfabeticamente se ambos forem ou não favoritos
+        return a.name.localeCompare(b.name);
       }
-      return aIsFavorite ? -1 : 1; // Favoritos vêm primeiro
+      return aIsFavorite ? -1 : 1;
     });
   }, [professors, favoriteProfessors]);
 
-  // Funções para buscar dados
   const fetchExercisesData = async (professorUid: string): Promise<Exercise[]> => {
     if (exercisesCache.current[professorUid]) {
-      return exercisesCache.current[professorUid]; // Retorna os exercícios do cache se disponíveis
+      return exercisesCache.current[professorUid];
     }
 
     const q = query(
@@ -262,11 +247,11 @@ export default function ExerciseListScreen() {
       const data = doc.data();
       return {
         id: doc.id,
-        question: `${index + 1}. ${data.name}`, // Formata a questão do exercício
+        question: `${index + 1}. ${data.name}`,
         xpValue: data.xpValue,
       };
     });
-    exercisesCache.current[professorUid] = exercisesData; // Armazena no cache
+    exercisesCache.current[professorUid] = exercisesData;
     return exercisesData;
   };
 
@@ -303,21 +288,18 @@ export default function ExerciseListScreen() {
     }
   }, [selectedProfessor]);
 
-  // Função ao selecionar um professor
   const onSelectProfessor = useCallback((professor: Professor) => {
     setSelectedProfessor(professor);
     setExercises([]);
     setAnsweredExercises([]);
   }, []);
 
-  // useFocusEffect para carregar exercícios ao focar na tela
   useFocusEffect(
     useCallback(() => {
       fetchExercises();
     }, [fetchExercises])
   );
 
-  // Funções memoizadas de renderização
   const renderProfessorItem = useCallback(
     ({ item }: { item: Professor }) => (
       <ProfessorItem
@@ -341,12 +323,15 @@ export default function ExerciseListScreen() {
     [answeredExercises, navigation]
   );
 
-  // Renderização condicional baseada nos estados de carregamento
+  const handleBackPress = () => {
+    setSelectedProfessor(null);
+  };
+
   if (loadingProfessors) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
-        <Header title="Exercícios Disponíveis" showBackButton />
+        <Header title="Exercícios Disponíveis" showBackButton={false} />
         <View style={styles.content}>
           <ActivityIndicator size="large" color="#4caf50" />
         </View>
@@ -354,11 +339,14 @@ export default function ExerciseListScreen() {
     );
   }
 
-  // Renderização principal do componente
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
-      <Header title="Exercícios Disponíveis" showBackButton />
+      <Header
+        title="Exercícios Disponíveis"
+        showBackButton={selectedProfessor !== null}
+        onBackPress={selectedProfessor !== null ? handleBackPress : undefined}
+      />
       <View style={styles.content}>
         {!selectedProfessor ? (
           <>
@@ -384,7 +372,9 @@ export default function ExerciseListScreen() {
             )}
           </>
         ) : loadingExercises ? (
-          <ActivityIndicator size="large" color="#4caf50" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4caf50" />
+          </View>
         ) : (
           <>
             <Text style={styles.title}>Exercícios de {selectedProfessor.name}:</Text>
@@ -411,7 +401,7 @@ export default function ExerciseListScreen() {
             )}
             <TouchableOpacity
               style={styles.button}
-              onPress={() => setSelectedProfessor(null)}
+              onPress={handleBackPress}
               accessibilityLabel="Selecionar outro professor"
               accessibilityRole="button"
             >
@@ -427,7 +417,6 @@ export default function ExerciseListScreen() {
   );
 }
 
-// Estilos do componente
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -474,6 +463,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     marginBottom: 10,
+    fontWeight: 'bold',
+    color: '#333',
   },
   emptyMessage: {
     fontSize: 16,
@@ -495,5 +486,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 18,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
