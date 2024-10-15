@@ -1,6 +1,6 @@
 // screens/AlunoVideosScreen.tsx
 
-import React, { useEffect, useState, useContext, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useContext, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
-import { firestore, auth } from '../firebaseConfig';
+import { firestore } from '../firebaseConfig';
 import {
   collection,
   getDocs,
@@ -57,6 +57,7 @@ export default function AlunoVideosScreen() {
       const q = query(
         collection(firestore, 'videos'),
         where('url', '!=', ''),
+        orderBy('url'), // Adicionado orderBy 'url' primeiro
         orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);

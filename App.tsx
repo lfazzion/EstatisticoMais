@@ -14,7 +14,7 @@ import {
 import { signOut } from 'firebase/auth';
 import { auth } from './firebaseConfig';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { Alert, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -280,8 +280,6 @@ const styles = StyleSheet.create({
 });
 
 export default function App() {
-  const { darkModeEnabled } = useContext(ThemeContext);
-
   return (
     <ThemeProvider>
       <NavigationContainer>
@@ -312,7 +310,8 @@ export default function App() {
           {/* Adicionando telas de vídeo */}
           <Stack.Screen name="AddVideo" component={AddVideoScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditVideo" component={EditVideoScreen} options={{ headerShown: false }} />
-          <Stack.Screen name="AlunoVideos" component={AlunoVideosScreen} options={{ headerShown: false }} /> {/* Adicionando a nova tela */}
+          {/* REMOVA ESTA LINHA PARA EVITAR DUPLICAÇÃO */}
+          {/* <Stack.Screen name="AlunoVideos" component={AlunoVideosScreen} options={{ headerShown: false }} /> */}
         </Stack.Navigator>
       </NavigationContainer>
     </ThemeProvider>
