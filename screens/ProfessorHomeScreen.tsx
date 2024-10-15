@@ -1,5 +1,5 @@
 // screens/ProfessorHomeScreen.tsx
-// Importações necessárias
+
 import React, { useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform, StatusBar, ScrollView } from 'react-native';
 import Header from '../components/Header';
@@ -19,15 +19,15 @@ export default function ProfessorHomeScreen() {
   }, [navigation]);
 
   const handleViewVideos = useCallback(() => {
-    navigation.navigate('ProfessorVideos'); // Navegar para a tela de vídeos do professor
+    navigation.navigate('ProfessorVideos'); // Atualizado: Navegar para a rota 'ProfessorVideos'
   }, [navigation]);
 
   const handleViewMaterials = useCallback(() => {
-    navigation.navigate('ProfessorMaterials'); // Navegar para a tela de materiais de leitura do professor
+    navigation.navigate('ReadingMaterials'); // Navegar para a tela de materiais de leitura do professor
   }, [navigation]);
 
   const handleViewStudentStats = useCallback(() => {
-    navigation.navigate('StudentStatistics'); // Navegar para a tela de estatísticas dos alunos
+    navigation.navigate('AlunoStatistics'); // Navegar para a tela de estatísticas dos alunos
   }, [navigation]);
 
   // Função para obter estilo condicional com base no modo escuro/claro

@@ -1,6 +1,6 @@
 // screens/AddExerciseScreen.tsx
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -170,6 +170,14 @@ export default function AddExerciseScreen() {
     return darkModeEnabled ? darkStyle : lightStyle; // Retorna o estilo apropriado com base no tema
   };
 
+  // Memoizar estilos dinâmicos para evitar recomputações desnecessárias
+  const pickerItemStyle = useMemo(() => ({
+    color: darkModeEnabled ? '#fff' : '#333',
+    fontSize: 16,
+  }), [darkModeEnabled]);
+
+  const pickerColor = darkModeEnabled ? '#fff' : '#333';
+
   // Retorna a estrutura da interface da tela
   return (
     <SafeAreaView style={[styles.container, getConditionalStyle(styles.lightContainer, styles.darkContainer)]}>
@@ -266,31 +274,30 @@ export default function AddExerciseScreen() {
         </TouchableOpacity>
 
         {/* Seletor para o valor de XP do exercício */}
-        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Selecione o valor de XP:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Defina o XP:</Text>
         <View
           style={[
             styles.pickerContainer,
             getConditionalStyle(styles.lightPickerContainer, styles.darkPickerContainer),
           ]}
         >
-          <View style={[
-            styles.pickerWrapper,
-            { backgroundColor: darkModeEnabled ? '#555' : '#eee' } // Ajuste dinâmico da cor de fundo
-          ]}>
-            <Picker
-              selectedValue={xpValue}
-              onValueChange={(itemValue) => setXpValue(itemValue)}
-              style={styles.picker}
-              dropdownIconColor={darkModeEnabled ? '#fff' : '#333'}
-              enabled={!loading}
-              itemStyle={Platform.OS === 'ios' ? styles.pickerItemIOS : {}}
-            >
-              <Picker.Item label="+10XP (Fácil)" value={10} />
-              <Picker.Item label="+20XP (Médio)" value={20} />
-              <Picker.Item label="+30XP (Difícil)" value={30} />
-              <Picker.Item label="+50XP (Muito Difícil)" value={50} />
-            </Picker>
-          </View>
+          <Picker
+            key={darkModeEnabled ? 'dark' : 'light'} // Força re-renderização ao mudar o tema
+            selectedValue={xpValue}
+            onValueChange={(itemValue) => setXpValue(itemValue)}
+            style={[
+              styles.picker,
+              { color: pickerColor }, // Ajuste da cor do texto para combinar com o tema
+            ]}
+            dropdownIconColor={darkModeEnabled ? '#fff' : '#333'}
+            enabled={!loading}
+            itemStyle={pickerItemStyle} // Definindo a cor diretamente para cada item
+          >
+            <Picker.Item label="+10XP (Fácil)" value={10} />
+            <Picker.Item label="+20XP (Médio)" value={20} />
+            <Picker.Item label="+30XP (Difícil)" value={30} />
+            <Picker.Item label="+50XP (Muito Difícil)" value={50} />
+          </Picker>
         </View>
 
         {/* Entrada de texto para a dica do exercício */}
@@ -365,6 +372,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 16,
     marginBottom: 10,
+    height: 50, // Altura padrão para todos os campos de entrada
   },
   lightInput: {
     backgroundColor: '#eee',
@@ -385,7 +393,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 16,
     marginRight: 10,
-    height: 50, // Mantém a altura original
+    height: 50, // Consistência na altura com outros campos
     backgroundColor: 'transparent', // Evita sobreposição de cores
   },
   checkboxContainer: {
@@ -423,10 +431,9 @@ const styles = StyleSheet.create({
   pickerContainer: {
     borderRadius: 8,
     marginBottom: 15,
-    overflow: 'hidden',
-    justifyContent: 'center', // Alinha verticalmente o Picker
-    paddingHorizontal: 5, // Adiciona padding lateral para melhor apresentação
-    ...(Platform.OS === 'ios' ? { height: 60, paddingVertical: 5 } : {}), // Ajustes específicos para iOS
+    height: 50, // Consistência com os outros campos de entrada
+    justifyContent: 'center',
+    paddingHorizontal: 0,
   },
   lightPickerContainer: {
     backgroundColor: '#eee',
@@ -434,25 +441,9 @@ const styles = StyleSheet.create({
   darkPickerContainer: {
     backgroundColor: '#555',
   },
-  pickerWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center', // Garante que o Picker seja centralizado dentro do contêiner
-    borderRadius: 8,
-    backgroundColor: '#555', // Será ajustado dinamicamente no JSX
-    height: 50, // Certifique-se de que a altura seja a mesma que os outros elementos
-    paddingHorizontal: 10, // Adiciona um padding lateral para melhorar a estética
-  },
   picker: {
     width: '100%',
-    height: '100%', // Use a altura total do contêiner para garantir consistência
-    paddingVertical: 5, // Ajuste o padding para centralizar melhor o texto
     justifyContent: 'center',
-  },
-  pickerItemIOS: {
-    fontSize: 16,
-    color: '#fff', // Será ajustado dinamicamente
-    height: 50, // Consistente com a altura do Picker
-    textAlign: 'center', // Centraliza o texto verticalmente no item
   },
   button: {
     borderRadius: 8,

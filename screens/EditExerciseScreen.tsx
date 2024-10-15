@@ -1,6 +1,6 @@
 // screens/EditExerciseScreen.tsx
-// Importações necessárias de módulos e componentes
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import {
   View,
   TextInput,
@@ -23,6 +23,7 @@ import { Picker } from '@react-native-picker/picker';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { CommonActions } from '@react-navigation/native';
 import Checkbox from 'expo-checkbox';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 // Tipagem específica para as propriedades de navegação e rota
 type EditExerciseRouteProp = RouteProp<RootStackParamList, 'EditExercise'>;
@@ -33,19 +34,21 @@ export default function EditExerciseScreen() {
   // Obtenção das propriedades da rota e navegação
   const route = useRoute<EditExerciseRouteProp>();
   const navigation = useNavigation<EditExerciseNavigationProp>();
-  const { exerciseId } = route.params; // Obtém o ID do exercício passado pela navegação
+  const { exerciseId } = route.params;
 
   // Definição dos estados para controle dos campos e dados do exercício
-  const [exerciseName, setExerciseName] = useState<string>(''); // Nome do exercício
-  const [question, setQuestion] = useState<string>(''); // Pergunta do exercício
-  const [options, setOptions] = useState<string[]>([]); // Opções de resposta
-  const [correctOptions, setCorrectOptions] = useState<boolean[]>([]); // Marcação das opções corretas
-  const [hint, setHint] = useState<string>(''); // Dica ou sugestão para o exercício
-  const [xpValue, setXpValue] = useState<number>(10); // Valor do XP associado
-  const [error, setError] = useState<string>(''); // Mensagem de erro
-  const [loading, setLoading] = useState<boolean>(true); // Controle do estado de carregamento
+  const [exerciseName, setExerciseName] = useState<string>('');
+  const [question, setQuestion] = useState<string>('');
+  const [options, setOptions] = useState<string[]>([]);
+  const [correctOptions, setCorrectOptions] = useState<boolean[]>([]);
+  const [hint, setHint] = useState<string>('');
+  const [xpValue, setXpValue] = useState<number>(10);
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // useEffect para buscar os dados do exercício ao carregar o componente
+  // Obter o estado do modo escuro do contexto
+  const { darkModeEnabled } = useContext(ThemeContext);
+
   useEffect(() => {
     const fetchExercise = async () => {
       try {
@@ -53,12 +56,12 @@ export default function EditExerciseScreen() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setExerciseName(data.name || ''); // Atualiza o estado com o nome do exercício
-          setQuestion(data.question || ''); // Atualiza a pergunta
-          setOptions(data.options || ['']); // Atualiza as opções
-          setCorrectOptions(data.correctOptions || [false]); // Atualiza as opções corretas
-          setHint(data.hint || ''); // Atualiza a dica
-          setXpValue(data.xpValue || 10); // Atualiza o XP
+          setExerciseName(data.name || '');
+          setQuestion(data.question || '');
+          setOptions(data.options || ['']);
+          setCorrectOptions(data.correctOptions || [false]);
+          setHint(data.hint || '');
+          setXpValue(data.xpValue || 10);
         } else {
           console.error('Exercício não encontrado');
           setError('Exercício não encontrado. Por favor, tente novamente.');
@@ -82,17 +85,15 @@ export default function EditExerciseScreen() {
     });
   };
 
-  // Função para adicionar uma nova opção de resposta
   const addOption = () => {
     if (options.length >= 5) {
       Alert.alert('Limite atingido', 'Você só pode adicionar até 5 opções.');
       return;
     }
-    setOptions([...options, '']); // Adiciona uma nova opção vazia
-    setCorrectOptions([...correctOptions, false]); // Adiciona uma marcação falsa para a nova opção
+    setOptions([...options, '']);
+    setCorrectOptions([...correctOptions, false]);
   };
 
-  // Função para remover uma opção de resposta, mantendo o mínimo de duas
   const removeOption = (index: number) => {
     if (options.length > 2) {
       const newOptions = [...options];
@@ -104,9 +105,7 @@ export default function EditExerciseScreen() {
     }
   };
 
-  // Função para atualizar o exercício no Firestore
   const updateExercise = async () => {
-    // Filtragem das opções em branco e alinhamento com correctOptions
     const filteredOptionsAndCorrectOptions = options.reduce(
       (
         acc: { options: string[]; correctOptions: boolean[] },
@@ -125,7 +124,6 @@ export default function EditExerciseScreen() {
 
     const { options: filteredOptions, correctOptions: filteredCorrectOptions } = filteredOptionsAndCorrectOptions;
 
-    // Validações dos campos obrigatórios
     if (exerciseName.trim() === '') {
       setError('Por favor, insira o nome do exercício.');
       return;
@@ -175,7 +173,7 @@ export default function EditExerciseScreen() {
           text: 'Continuar Editando',
           onPress: () => {},
         },
-      ]);           
+      ]);
       setError('');
     } catch (error) {
       console.error('Erro ao atualizar exercício:', error);
@@ -183,39 +181,46 @@ export default function EditExerciseScreen() {
     }
   };
 
-  // Retorno de uma tela de carregamento, caso o estado loading esteja verdadeiro
+  const getConditionalStyle = (lightStyle: any, darkStyle: any) => {
+    return darkModeEnabled ? darkStyle : lightStyle;
+  };
+
+  const pickerItemStyle = useMemo(() => ({
+    color: darkModeEnabled ? '#fff' : '#333',
+    fontSize: 16,
+  }), [darkModeEnabled]);
+
+  const pickerColor = darkModeEnabled ? '#fff' : '#333';
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+      <SafeAreaView style={[styles.container, getConditionalStyle(styles.lightContainer, styles.darkContainer)]}>
+        <StatusBar barStyle={darkModeEnabled ? 'light-content' : 'dark-content'} backgroundColor="#4caf50" />
         <Header title="Editar Exercício" showBackButton />
         <ActivityIndicator size="large" color="#4caf50" style={{ marginTop: 50 }} />
       </SafeAreaView>
     );
   }
 
-  // Interface principal da tela de edição do exercício
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+    <SafeAreaView style={[styles.container, getConditionalStyle(styles.lightContainer, styles.darkContainer)]}>
+      <StatusBar barStyle={darkModeEnabled ? 'light-content' : 'dark-content'} backgroundColor="#4caf50" />
       <Header title="Editar Exercício" showBackButton />
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Entrada para o nome do exercício */}
-        <Text style={styles.label}>Nome do Exercício:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Nome do Exercício:</Text>
         <TextInput
-          style={[styles.input, { height: 50 }]}
+          style={[styles.input, getConditionalStyle(styles.lightInput, styles.darkInput)]}
           placeholder="Digite o nome do exercício"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
           onChangeText={(text) => setExerciseName(text)}
           value={exerciseName}
         />
 
-        {/* Entrada para a pergunta do exercício */}
-        <Text style={styles.label}>Pergunta:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Pergunta:</Text>
         <TextInput
-          style={[styles.input, { height: 100 }]}
+          style={[styles.input, getConditionalStyle(styles.lightInput, styles.darkInput), { height: 100 }]}
           placeholder="Digite a pergunta"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
           multiline
           numberOfLines={4}
           onChangeText={(text) => setQuestion(text)}
@@ -223,13 +228,13 @@ export default function EditExerciseScreen() {
         />
 
         {/* Campos de opções de resposta */}
-        <Text style={styles.label}>Opções (Mínimo 2):</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Opções (Mínimo 2):</Text>
         {options.map((option, index) => (
           <View key={index} style={styles.optionContainer}>
             <TextInput
-              style={styles.optionInput}
+              style={[styles.optionInput, getConditionalStyle(styles.lightInput, styles.darkInput)]}
               placeholder={`Opção ${index + 1}`}
-              placeholderTextColor="#aaa"
+              placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
               onChangeText={(text) => handleOptionChange(index, text)}
               value={option}
             />
@@ -241,8 +246,11 @@ export default function EditExerciseScreen() {
                   newCorrectOptions[index] = newValue;
                   setCorrectOptions(newCorrectOptions);
                 }}
+                color={correctOptions[index] ? '#4caf50' : undefined}
               />
-              <Text style={styles.checkboxLabel}>Correta</Text>
+              <Text style={[styles.checkboxLabel, getConditionalStyle(styles.lightText, styles.darkText)]}>
+                Correta
+              </Text>
             </View>
             {options.length > 2 && (
               <TouchableOpacity
@@ -255,17 +263,23 @@ export default function EditExerciseScreen() {
           </View>
         ))}
         {/* Botão para adicionar nova opção */}
-        <TouchableOpacity onPress={addOption} style={styles.addOptionButton}>
+        <TouchableOpacity
+          onPress={addOption}
+          style={[styles.addOptionButton, getConditionalStyle(styles.lightButton, styles.darkButton)]}
+        >
           <Text style={styles.addOptionButtonText}>Adicionar Opção</Text>
         </TouchableOpacity>
 
         {/* Seletor de valor de XP */}
-        <Text style={styles.label}>Selecione o valor de XP:</Text>
-        <View style={styles.pickerContainer}>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Defina o XP:</Text>
+        <View style={[styles.pickerContainer, getConditionalStyle(styles.lightPickerContainer, styles.darkPickerContainer)]}>
           <Picker
+            key={darkModeEnabled ? 'dark' : 'light'}
             selectedValue={xpValue}
             onValueChange={(itemValue) => setXpValue(itemValue)}
-            style={styles.picker}
+            style={[styles.picker, { color: pickerColor }]}
+            dropdownIconColor={darkModeEnabled ? '#fff' : '#333'}
+            itemStyle={pickerItemStyle}
           >
             <Picker.Item label="+10XP (Fácil)" value={10} />
             <Picker.Item label="+20XP (Médio)" value={20} />
@@ -274,21 +288,26 @@ export default function EditExerciseScreen() {
           </Picker>
         </View>
 
-        {/* Entrada para a dica ou ajuda do exercício */}
-        <Text style={styles.label}>Dica:</Text>
+        <Text style={[styles.label, getConditionalStyle(styles.lightText, styles.darkText)]}>Dica:</Text>
         <TextInput
-          style={[styles.input, { height: 100 }]}
+          style={[styles.input, getConditionalStyle(styles.lightInput, styles.darkInput), { height: 100 }]}
           placeholder="Explicação ou fórmulas a serem utilizadas"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={darkModeEnabled ? '#aaa' : '#666'}
           multiline
           numberOfLines={4}
           onChangeText={(text) => setHint(text)}
           value={hint}
         />
 
-        {/* Mensagem de erro, se houver, e botão para atualizar o exercício */}
-        {error !== '' && <Text style={styles.errorText}>{error}</Text>}
-        <TouchableOpacity style={styles.button} onPress={updateExercise}>
+        {error !== '' && (
+          <Text style={[styles.errorText, getConditionalStyle(styles.lightErrorText, styles.darkErrorText)]}>
+            {error}
+          </Text>
+        )}
+        <TouchableOpacity
+          style={[styles.button, getConditionalStyle(styles.lightButton, styles.darkButton)]}
+          onPress={updateExercise}
+        >
           <Text style={styles.buttonText}>Atualizar Exercício</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -300,7 +319,12 @@ export default function EditExerciseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  lightContainer: {
     backgroundColor: '#fff',
+  },
+  darkContainer: {
+    backgroundColor: '#333',
   },
   content: {
     padding: 20,
@@ -311,13 +335,26 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 5,
   },
+  lightText: {
+    color: '#333',
+  },
+  darkText: {
+    color: '#fff',
+  },
   input: {
-    backgroundColor: '#eee',
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
     marginBottom: 10,
+    height: 50,
+  },
+  lightInput: {
+    backgroundColor: '#eee',
     color: '#333',
+  },
+  darkInput: {
+    backgroundColor: '#555',
+    color: '#fff',
   },
   optionContainer: {
     flexDirection: 'row',
@@ -326,12 +363,12 @@ const styles = StyleSheet.create({
   },
   optionInput: {
     flex: 1,
-    backgroundColor: '#eee',
     borderRadius: 8,
     paddingHorizontal: 15,
     fontSize: 16,
-    color: '#333',
+    marginRight: 10,
     height: 50,
+    backgroundColor: 'transparent',
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -341,7 +378,6 @@ const styles = StyleSheet.create({
   checkboxLabel: {
     marginLeft: 5,
     fontSize: 16,
-    color: '#333',
   },
   removeOptionButton: {
     marginLeft: 10,
@@ -351,7 +387,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   addOptionButton: {
-    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
@@ -361,18 +396,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
   },
+  lightButton: {
+    backgroundColor: '#4caf50',
+  },
+  darkButton: {
+    backgroundColor: '#006400',
+  },
   pickerContainer: {
-    backgroundColor: '#eee',
     borderRadius: 8,
     marginBottom: 15,
+    height: 50,
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  lightPickerContainer: {
+    backgroundColor: '#eee',
+  },
+  darkPickerContainer: {
+    backgroundColor: '#555',
   },
   picker: {
     width: '100%',
-    height: 50,
-    color: '#333',
+    justifyContent: 'center',
   },
   button: {
-    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
@@ -383,8 +430,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   errorText: {
-    color: 'red',
     marginTop: 10,
     textAlign: 'center',
+  },
+  lightErrorText: {
+    color: 'red',
+  },
+  darkErrorText: {
+    color: '#ff6666',
   },
 });
