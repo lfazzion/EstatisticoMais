@@ -1,54 +1,68 @@
 import React, { useMemo } from 'react';
-import { Text, View, StyleSheet, TextStyle } from 'react-native';
+import { Text, View, StyleSheet, TextStyle, StyleProp } from 'react-native';
 import MathJaxSvg from 'react-native-mathjax-svg';
 
 interface MixedTextProps {
   content: string;
-  style?: TextStyle;
+  style?: StyleProp<TextStyle>;
 }
 
 type Part = { type: 'text' | 'inlineLatex' | 'displayLatex'; value: string };
 
 const MixedText: React.FC<MixedTextProps> = ({ content, style }) => {
-  // Memorizar o conteúdo parseado para evitar reprocessamento se o conteúdo não mudar
+  const flattenedStyle = StyleSheet.flatten(style);
+
   const parts = useMemo(() => parseContent(content), [content]);
 
-  return (
-    <>
-      {parts.map((part, index) => {
-        if (part.type === 'text') {
-          // Lidar com quebras de linha dentro das partes de texto
-          const lines = part.value.split('\n');
-          return lines.map((line, lineIndex) => (
-            <Text style={style} key={`${index}-${lineIndex}`}>
-              {line}
-              {lineIndex < lines.length - 1 && '\n'}
-            </Text>
-          ));
-        } else if (part.type === 'inlineLatex') {
-          return (
-            <InlineMath
-              key={index}
-              math={part.value}
-              fontSize={style?.fontSize || 16}
-              color={style?.color?.toString() || '#000'}
-            />
-          );
-        } else if (part.type === 'displayLatex') {
-          return (
-            <DisplayMath
-              key={index}
-              math={part.value}
-              fontSize={style?.fontSize || 16}
-              color={style?.color?.toString() || '#000'}
-            />
-          );
-        } else {
-          return null;
-        }
-      })}
-    </>
-  );
+  const elementsToRender = [];
+  let inlineElements: (string | React.ReactElement)[] = [];
+
+  parts.forEach((part, index) => {
+    if (part.type === 'text') {
+      // Adicionar o texto diretamente ao array de elementos inline
+      inlineElements.push(part.value);
+    } else if (part.type === 'inlineLatex') {
+      // Adicionar o LaTeX inline ao array de elementos inline
+      inlineElements.push(
+        <InlineMath
+          key={`inline-${index}`}
+          math={part.value}
+          fontSize={flattenedStyle?.fontSize || 16}
+          color={flattenedStyle?.color?.toString() || '#000'}
+        />
+      );
+    } else if (part.type === 'displayLatex') {
+      // Renderizar o conteúdo inline acumulado dentro de um componente Text
+      if (inlineElements.length > 0) {
+        elementsToRender.push(
+          <Text key={`text-${index}`} style={style}>
+            {inlineElements}
+          </Text>
+        );
+        inlineElements = [];
+      }
+      // Renderizar o LaTeX display fora do componente Text
+      elementsToRender.push(
+        <DisplayMath
+          key={`display-${index}`}
+          math={part.value}
+          fontSize={(flattenedStyle?.fontSize || 16) * 1.5}
+          color={flattenedStyle?.color?.toString() || '#000'}
+        />
+      );
+    }
+  });
+
+  // Renderizar quaisquer elementos inline restantes
+  if (inlineElements.length > 0) {
+    elementsToRender.push(
+      <Text key={`text-end`} style={style}>
+        {inlineElements}
+      </Text>
+    );
+  }
+
+  return <>{elementsToRender}</>;
 };
 
 const InlineMath: React.FC<{ math: string; fontSize: number; color: string }> = ({
@@ -56,6 +70,7 @@ const InlineMath: React.FC<{ math: string; fontSize: number; color: string }> = 
   fontSize,
   color,
 }) => {
+  // Ajustar o estilo para o LaTeX inline
   return (
     <MathJaxSvg fontSize={fontSize} color={color} style={styles.inlineMath}>
       {math}
@@ -70,7 +85,7 @@ const DisplayMath: React.FC<{ math: string; fontSize: number; color: string }> =
 }) => {
   return (
     <View style={styles.displayMathContainer}>
-      <MathJaxSvg fontSize={fontSize * 1.5} color={color}>
+      <MathJaxSvg fontSize={fontSize} color={color}>
         {math}
       </MathJaxSvg>
     </View>
@@ -116,10 +131,10 @@ function parseContent(content: string): Part[] {
 const styles = StyleSheet.create({
   inlineMath: {
     // Ajustar o alinhamento vertical para coincidir com o texto
+    // Isso pode variar dependendo das necessidades do seu projeto
     alignSelf: 'center',
   },
   displayMathContainer: {
-    // Centralizar o LaTeX display e adicionar espaçamento vertical
     width: '100%',
     alignItems: 'center',
     marginVertical: 15,

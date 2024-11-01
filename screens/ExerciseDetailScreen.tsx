@@ -1,4 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+// screens/ExerciseDetailScreen.tsx
+
+import React, { useEffect, useState, useMemo, useContext } from 'react';
 import {
   View,
   Modal,
@@ -10,7 +12,10 @@ import {
   Text,
   Alert,
   ActivityIndicator,
-  Platform
+  Platform,
+  ViewStyle,
+  TextStyle,
+  StyleProp,
 } from 'react-native';
 import Header from '../components/Header';
 import { firestore, auth } from '../firebaseConfig';
@@ -33,6 +38,7 @@ import { RootStackParamList } from '../types/navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MixedText from '../components/MixedText';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 // Define the route and navigation prop types
 type ExerciseDetailRouteProp = RouteProp<RootStackParamList, 'ExerciseDetail'>;
@@ -83,6 +89,9 @@ export default function ExerciseDetailScreen() {
   const memoizedExerciseId = useMemo(() => exerciseId, [exerciseId]);
   const [cachedExerciseData, setCachedExerciseData] = useState<{ [key: string]: Exercise }>({});
   const [cachedAnsweredData, setCachedAnsweredData] = useState<{ [key: string]: boolean }>({});
+
+  // Get dark mode state from context
+  const { darkModeEnabled } = useContext(ThemeContext);
 
   // Fetch exercise data when component mounts or exercise ID changes
   useEffect(() => {
@@ -306,8 +315,16 @@ export default function ExerciseDetailScreen() {
   // Display loading indicator while fetching exercise data
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+      <SafeAreaView
+        style={[
+          styles.container,
+          darkModeEnabled ? styles.darkContainer : styles.lightContainer,
+        ]}
+      >
+        <StatusBar
+          barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
+          backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+        />
         <Header title="Carregando..." showBackButton />
         <View style={styles.content}>
           <ActivityIndicator size="large" color="#4caf50" />
@@ -319,37 +336,65 @@ export default function ExerciseDetailScreen() {
   // Display a message if the exercise is not found
   if (!exercise) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+      <SafeAreaView
+        style={[
+          styles.container,
+          darkModeEnabled ? styles.darkContainer : styles.lightContainer,
+        ]}
+      >
+        <StatusBar
+          barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
+          backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+        />
         <Header title="Exercício não encontrado" showBackButton />
         <View style={styles.content}>
-          <Text>Exercício não encontrado.</Text>
+          <Text style={[styles.errorText, darkModeEnabled ? styles.darkText : styles.lightText]}>
+            Exercício não encontrado.
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   // Determine the style for each option based on its state
-  const optionStyle = (index: number) => {
+  const optionStyle = (index: number): StyleProp<ViewStyle> => {
     const isSelected = selectedOptions.has(index);
 
-    // Highlight incorrect options in red if the answer was submitted and incorrect
-    if (submitted && isCorrect === false && isSelected) {
-      return [styles.optionButton, styles.incorrectOption];
+    // Start with base style
+    let combinedStyle: ViewStyle = { ...styles.optionButton };
+
+    // Apply selected style
+    if (isSelected) {
+      combinedStyle = { ...combinedStyle, ...styles.selectedOption };
     }
 
-    // Highlight correct options in green if the answer was submitted and correct
-    if (submitted && isCorrect === true && isSelected) {
-      return [styles.optionButton, styles.correctOption];
+    // Apply correct or incorrect style after submission
+    if (submitted) {
+      if (isCorrect && isSelected) {
+        combinedStyle = { ...combinedStyle, ...styles.correctOption };
+      } else if (!isCorrect && isSelected) {
+        combinedStyle = { ...combinedStyle, ...styles.incorrectOption };
+      }
     }
 
-    // Default style for options
-    return [styles.optionButton, isSelected && styles.selectedOption];
+    // Apply dark or light mode styles
+    const modeStyle = darkModeEnabled ? styles.darkOption : styles.lightOption;
+    combinedStyle = { ...combinedStyle, ...modeStyle };
+
+    return combinedStyle;
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+    <SafeAreaView
+      style={[
+        styles.container,
+        darkModeEnabled ? styles.darkContainer : styles.lightContainer,
+      ]}
+    >
+      <StatusBar
+        barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
+        backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+      />
       <Header
         title="Detalhes do Exercício"
         showBackButton
@@ -361,7 +406,10 @@ export default function ExerciseDetailScreen() {
       />
       <ScrollView contentContainerStyle={styles.content}>
         {/* Utilizando o MixedText para renderizar a pergunta com texto e LaTeX */}
-        <MixedText content={exercise.question} style={styles.question} />
+        <MixedText
+          content={exercise.question}
+          style={[styles.question, darkModeEnabled ? styles.darkText : styles.lightText]}
+        />
 
         {exercise.options.map((option: string, index: number) => (
           <TouchableOpacity
@@ -369,11 +417,21 @@ export default function ExerciseDetailScreen() {
             style={optionStyle(index)}
             onPress={() => toggleOption(index)}
           >
-            <MixedText content={option} style={styles.optionText} />
+            <MixedText
+              content={option}
+              style={[styles.optionText, darkModeEnabled ? styles.darkText : styles.lightText]}
+            />
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={styles.button} onPress={submitAnswer} disabled={saving}>
+        <TouchableOpacity
+          style={[
+            styles.button,
+            darkModeEnabled ? styles.darkButton : styles.lightButton,
+          ]}
+          onPress={submitAnswer}
+          disabled={saving}
+        >
           {saving ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
@@ -382,7 +440,7 @@ export default function ExerciseDetailScreen() {
         </TouchableOpacity>
 
         {alreadyAnsweredCorrectly && (
-          <Text style={styles.infoText}>
+          <Text style={[styles.infoText, darkModeEnabled ? styles.darkText : styles.lightText]}>
             Você já acertou este exercício.
             {'\n'}
             Não será ganho XP adicional.
@@ -397,11 +455,26 @@ export default function ExerciseDetailScreen() {
           onRequestClose={closeCorrectModal}
         >
           <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Resposta Correta!</Text>
-              <Text style={styles.modalMessage}>Parabéns, você acertou!</Text>
+            <View
+              style={[
+                styles.modalContainer,
+                darkModeEnabled ? styles.darkModal : styles.lightModal,
+              ]}
+            >
+              <Text style={[styles.modalTitle, darkModeEnabled ? styles.darkText : styles.lightText]}>
+                Resposta Correta!
+              </Text>
+              <Text style={[styles.modalMessage, darkModeEnabled ? styles.darkText : styles.lightText]}>
+                Parabéns, você acertou!
+              </Text>
               <View style={styles.modalButtonsContainer}>
-                <TouchableOpacity style={styles.modalButton} onPress={closeCorrectModal}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    darkModeEnabled ? styles.darkButton : styles.lightButton,
+                  ]}
+                  onPress={closeCorrectModal}
+                >
                   <Text style={styles.modalButtonText}>Fechar</Text>
                 </TouchableOpacity>
               </View>
@@ -417,14 +490,35 @@ export default function ExerciseDetailScreen() {
           onRequestClose={closeModal}
         >
           <View style={styles.modalBackground}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Resposta Incorreta</Text>
-              <Text style={styles.modalMessage}>Não foi dessa vez. Gostaria de ver a dica?</Text>
+            <View
+              style={[
+                styles.modalContainer,
+                darkModeEnabled ? styles.darkModal : styles.lightModal,
+              ]}
+            >
+              <Text style={[styles.modalTitle, darkModeEnabled ? styles.darkText : styles.lightText]}>
+                Resposta Incorreta
+              </Text>
+              <Text style={[styles.modalMessage, darkModeEnabled ? styles.darkText : styles.lightText]}>
+                Não foi dessa vez. Gostaria de ver a dica?
+              </Text>
               <View style={styles.modalButtonsContainer}>
-                <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    darkModeEnabled ? styles.darkButton : styles.lightButton,
+                  ]}
+                  onPress={closeModal}
+                >
                   <Text style={styles.modalButtonText}>Fechar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.modalButton} onPress={showHint}>
+                <TouchableOpacity
+                  style={[
+                    styles.modalButton,
+                    darkModeEnabled ? styles.darkButton : styles.lightButton,
+                  ]}
+                  onPress={showHint}
+                >
                   <Text style={styles.modalButtonText}>Ver Dica</Text>
                 </TouchableOpacity>
               </View>
@@ -439,7 +533,12 @@ export default function ExerciseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  lightContainer: {
     backgroundColor: '#fff',
+  },
+  darkContainer: {
+    backgroundColor: '#121212',
   },
   content: {
     flexGrow: 1,
@@ -449,21 +548,27 @@ const styles = StyleSheet.create({
   question: {
     marginBottom: 20,
     fontSize: 18,
-    color: '#333',
   },
   optionButton: {
-    backgroundColor: '#eee',
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
     borderWidth: 2,
     borderColor: 'transparent',
+    backgroundColor: '#eee', // Default background color
+  },
+  lightOption: {
+    backgroundColor: '#eee',
+  },
+  darkOption: {
+    backgroundColor: '#1e1e1e',
   },
   selectedOption: {
     borderColor: '#4caf50', // Verde
   },
   correctOption: {
     backgroundColor: '#c8e6c9',
+    borderColor: '#388e3c',
   },
   incorrectOption: {
     backgroundColor: '#f8d7da', // Vermelho mais suave
@@ -471,14 +576,24 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
+  },
+  lightText: {
     color: '#333',
   },
+  darkText: {
+    color: '#fff',
+  },
   button: {
-    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
     marginVertical: 20,
+  },
+  lightButton: {
+    backgroundColor: '#4caf50',
+  },
+  darkButton: {
+    backgroundColor: '#006400',
   },
   buttonText: {
     color: '#fff',
@@ -493,7 +608,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 10,
     textAlign: 'center',
-    color: '#777',
   },
   modalBackground: {
     flex: 1,
@@ -503,10 +617,15 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '80%',
-    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 20,
     alignItems: 'center',
+  },
+  lightModal: {
+    backgroundColor: '#fff',
+  },
+  darkModal: {
+    backgroundColor: '#1e1e1e',
   },
   modalTitle: {
     fontSize: 20,
@@ -523,7 +642,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   modalButton: {
-    backgroundColor: '#4caf50',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -532,5 +650,9 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#fff',
     fontSize: 16,
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

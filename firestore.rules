@@ -60,7 +60,5 @@ service cloud.firestore {
         return isProfessor(userId) && resource.data.createdBy == userId;
       }
     }
-
-    // Outras regras...
   }
 }

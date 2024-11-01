@@ -1,6 +1,6 @@
 // screens/ExerciseListScreen.tsx
 
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef, useContext } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const ITEM_HEIGHT = 70;
 
@@ -65,17 +66,23 @@ interface ProfessorItemProps {
   isFavorite: boolean;
   onSelect: (professor: Professor) => void;
   onToggleFavorite: (uid: string) => void;
+  darkModeEnabled: boolean;
 }
 
 const ProfessorItem: React.FC<ProfessorItemProps> = React.memo(
-  ({ professor, isFavorite, onSelect, onToggleFavorite }) => (
+  ({ professor, isFavorite, onSelect, onToggleFavorite, darkModeEnabled }) => (
     <TouchableOpacity
-      style={styles.professorItem}
+      style={[
+        styles.professorItem,
+        darkModeEnabled ? styles.darkItem : styles.lightItem,
+      ]}
       onPress={() => onSelect(professor)}
       accessibilityLabel={`Selecionar professor ${professor.name}`}
       accessibilityRole="button"
     >
-      <Text style={styles.professorText}>{professor.name}</Text>
+      <Text style={[styles.professorText, darkModeEnabled ? styles.darkText : styles.lightText]}>
+        {professor.name}
+      </Text>
       <TouchableOpacity
         onPress={() => onToggleFavorite(professor.uid)}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -85,7 +92,7 @@ const ProfessorItem: React.FC<ProfessorItemProps> = React.memo(
         <Ionicons
           name={isFavorite ? 'star' : 'star-outline'}
           size={24}
-          color={isFavorite ? 'gold' : 'black'}
+          color={isFavorite ? 'gold' : darkModeEnabled ? '#fff' : '#000'}
         />
       </TouchableOpacity>
     </TouchableOpacity>
@@ -96,18 +103,45 @@ interface ExerciseItemProps {
   exercise: Exercise;
   isAnsweredCorrectly: boolean;
   onSelect: (exerciseId: string) => void;
+  darkModeEnabled: boolean;
 }
 
+const getDifficultyLabel = (xpValue: number): string => {
+  switch (xpValue) {
+    case 10:
+      return 'Fácil';
+    case 20:
+      return 'Médio';
+    case 30:
+      return 'Difícil';
+    case 50:
+      return 'Muito Difícil';
+    default:
+      return 'Desconhecido';
+  }
+};
+
 const ExerciseItem: React.FC<ExerciseItemProps> = React.memo(
-  ({ exercise, isAnsweredCorrectly, onSelect }) => (
+  ({ exercise, isAnsweredCorrectly, onSelect, darkModeEnabled }) => (
     <TouchableOpacity
-      style={styles.exerciseItem}
+      style={[
+        styles.exerciseItem,
+        darkModeEnabled ? styles.darkItem : styles.lightItem,
+      ]}
       onPress={() => onSelect(exercise.id)}
       accessibilityLabel={`Selecionar exercício ${exercise.question}`}
       accessibilityRole="button"
     >
-      <Text style={styles.exerciseText}>{exercise.question}</Text>
-      {isAnsweredCorrectly && <Text style={styles.xpText}>+{exercise.xpValue}XP</Text>}
+      <Text style={[styles.exerciseText, darkModeEnabled ? styles.darkText : styles.lightText]}>
+        {exercise.question}
+      </Text>
+      {isAnsweredCorrectly ? (
+        <Text style={styles.xpText}>+{exercise.xpValue}XP</Text>
+      ) : (
+        <Text style={[styles.difficultyText, darkModeEnabled ? styles.darkText : styles.lightText]}>
+          {getDifficultyLabel(exercise.xpValue)}
+        </Text>
+      )}
     </TouchableOpacity>
   )
 );
@@ -121,8 +155,10 @@ export default function ExerciseListScreen() {
   const [loadingProfessors, setLoadingProfessors] = useState<boolean>(true);
   const [loadingExercises, setLoadingExercises] = useState<boolean>(false);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  
+
   const exercisesCache = useRef<{ [key: string]: Exercise[] }>({});
+
+  const { darkModeEnabled } = useContext(ThemeContext);
 
   const toggleFavorite = useCallback(async (professorUid: string) => {
     const user = auth.currentUser;
@@ -240,6 +276,7 @@ export default function ExerciseListScreen() {
     const q = query(
       collection(firestore, 'exercises'),
       where('createdBy', '==', professorUid),
+      orderBy('xpValue', 'asc'),
       orderBy('createdAt', 'asc')
     );
     const querySnapshot = await getDocs(q);
@@ -307,9 +344,10 @@ export default function ExerciseListScreen() {
         isFavorite={favoriteProfessors.includes(item.uid)}
         onSelect={onSelectProfessor}
         onToggleFavorite={toggleFavorite}
+        darkModeEnabled={darkModeEnabled}
       />
     ),
-    [favoriteProfessors, onSelectProfessor, toggleFavorite]
+    [favoriteProfessors, onSelectProfessor, toggleFavorite, darkModeEnabled]
   );
 
   const renderExerciseItem = useCallback(
@@ -318,9 +356,10 @@ export default function ExerciseListScreen() {
         exercise={item}
         isAnsweredCorrectly={answeredExercises.includes(item.id)}
         onSelect={(exerciseId) => navigation.navigate('ExerciseDetail', { exerciseId })}
+        darkModeEnabled={darkModeEnabled}
       />
     ),
-    [answeredExercises, navigation]
+    [answeredExercises, navigation, darkModeEnabled]
   );
 
   const handleBackPress = () => {
@@ -329,8 +368,16 @@ export default function ExerciseListScreen() {
 
   if (loadingProfessors) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+      <SafeAreaView
+        style={[
+          styles.container,
+          darkModeEnabled ? styles.darkContainer : styles.lightContainer,
+        ]}
+      >
+        <StatusBar
+          barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
+          backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+        />
         <Header title="Exercícios Disponíveis" showBackButton={false} />
         <View style={styles.content}>
           <ActivityIndicator size="large" color="#4caf50" />
@@ -340,8 +387,16 @@ export default function ExerciseListScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4caf50" />
+    <SafeAreaView
+      style={[
+        styles.container,
+        darkModeEnabled ? styles.darkContainer : styles.lightContainer,
+      ]}
+    >
+      <StatusBar
+        barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
+        backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+      />
       <Header
         title="Exercícios Disponíveis"
         showBackButton={selectedProfessor !== null}
@@ -350,9 +405,18 @@ export default function ExerciseListScreen() {
       <View style={styles.content}>
         {!selectedProfessor ? (
           <>
-            <Text style={styles.title}>Selecione um Professor:</Text>
+            <Text style={[styles.title, darkModeEnabled ? styles.darkText : styles.lightText]}>
+              Selecione um Professor:
+            </Text>
             {sortedProfessors.length === 0 ? (
-              <Text style={styles.emptyMessage}>Nenhum professor disponível no momento.</Text>
+              <Text
+                style={[
+                  styles.emptyMessage,
+                  darkModeEnabled ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Nenhum professor disponível no momento.
+              </Text>
             ) : (
               <FlatList
                 data={sortedProfessors}
@@ -377,9 +441,16 @@ export default function ExerciseListScreen() {
           </View>
         ) : (
           <>
-            <Text style={styles.title}>Exercícios de {selectedProfessor.name}:</Text>
+            <Text style={[styles.title, darkModeEnabled ? styles.darkText : styles.lightText]}>
+              Exercícios de {selectedProfessor.name}:
+            </Text>
             {exercises.length === 0 ? (
-              <Text style={styles.emptyMessage}>
+              <Text
+                style={[
+                  styles.emptyMessage,
+                  darkModeEnabled ? styles.darkText : styles.lightText,
+                ]}
+              >
                 Nenhum exercício disponível para este professor.
               </Text>
             ) : (
@@ -400,7 +471,10 @@ export default function ExerciseListScreen() {
               />
             )}
             <TouchableOpacity
-              style={styles.button}
+              style={[
+                styles.button,
+                darkModeEnabled ? styles.darkButton : styles.lightButton,
+              ]}
               onPress={handleBackPress}
               accessibilityLabel="Selecionar outro professor"
               accessibilityRole="button"
@@ -420,7 +494,12 @@ export default function ExerciseListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  lightContainer: {
     backgroundColor: '#fff',
+  },
+  darkContainer: {
+    backgroundColor: '#121212',
   },
   content: {
     flex: 1,
@@ -434,50 +513,65 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#eee',
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
-  },
-  professorText: {
-    fontSize: 16,
-    color: '#333',
   },
   exerciseItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#eee',
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
   },
+  lightItem: {
+    backgroundColor: '#eee',
+  },
+  darkItem: {
+    backgroundColor: '#1e1e1e',
+  },
+  professorText: {
+    fontSize: 16,
+  },
   exerciseText: {
     fontSize: 16,
-    color: '#333',
   },
   xpText: {
     fontSize: 16,
     color: 'green',
   },
+  difficultyText: {
+    fontSize: 16,
+    color: 'gray',
+  },
+  lightText: {
+    color: '#333',
+  },
+  darkText: {
+    color: '#fff',
+  },
   title: {
     fontSize: 18,
     marginBottom: 10,
     fontWeight: 'bold',
-    color: '#333',
   },
   emptyMessage: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginTop: 20,
   },
   button: {
-    backgroundColor: '#4caf50',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
     marginTop: 20,
+  },
+  lightButton: {
+    backgroundColor: '#4caf50',
+  },
+  darkButton: {
+    backgroundColor: '#006400',
   },
   buttonContent: {
     flexDirection: 'row',
