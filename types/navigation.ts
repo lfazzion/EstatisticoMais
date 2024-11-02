@@ -9,7 +9,6 @@ export type RootStackParamList = {
   ProfessorDrawer: undefined;
   Profile: undefined;
   ExerciseDetail: { exerciseId: string };
-  Games: undefined;
   ReadingMaterials: undefined;
   ProfessorExercises: undefined;
   ProfessorVideos: undefined;
@@ -19,7 +18,10 @@ export type RootStackParamList = {
   Settings: undefined;
   AddVideo: undefined;
   EditVideo: { videoId: string };
-  AlunoVideos: undefined; // Adicionando a nova rota
+  AlunoVideos: undefined;
+  Games: undefined;
+  FormulaGame: undefined;
+  QuizGame: undefined;
 };
 
 // Tipos das rotas do Drawer Navigator do Aluno
@@ -28,10 +30,12 @@ export type AlunoDrawerParamList = {
   ExerciseList: undefined;
   Profile: undefined;
   Settings: undefined;
-  Games: undefined;
-  Videos: undefined; // Mantido, mas podemos renomear para AlunoVideos
+  Videos: undefined;
   ReadingMaterials: undefined;
-  AlunoVideos: undefined; // Adicionando para o aluno
+  AlunoVideos: undefined;
+  Games: undefined;
+  FormulaGame: undefined;
+  QuizGame: undefined;
 };
 
 // Tipos das rotas do Drawer Navigator do Professor

@@ -12,7 +12,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
-  Modal,
+  Linking, // Importando Linking
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -25,10 +25,9 @@ import {
   orderBy,
 } from 'firebase/firestore';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { Video, ResizeMode } from 'expo-av'; // Importando ResizeMode
 import { ThemeContext } from '../contexts/ThemeContext';
-import { RootStackParamList } from '../types/navigation';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../types/navigation';
 
 interface VideoItem {
   id: string;
@@ -39,25 +38,61 @@ interface VideoItem {
   createdAt: Date;
 }
 
+interface Professor {
+  uid: string;
+  name: string;
+}
+
 type AlunoVideosNavigationProp = StackNavigationProp<RootStackParamList, 'AlunoVideos'>;
 
 export default function AlunoVideosScreen() {
   const navigation = useNavigation<AlunoVideosNavigationProp>();
+  const [professors, setProfessors] = useState<Professor[]>([]);
+  const [selectedProfessor, setSelectedProfessor] = useState<Professor | null>(null);
   const [videos, setVideos] = useState<VideoItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loadingProfessors, setLoadingProfessors] = useState<boolean>(true);
+  const [loadingVideos, setLoadingVideos] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const { darkModeEnabled } = useContext(ThemeContext);
-  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
-  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
 
-  // Função para buscar vídeos do Firestore
+  // Função para buscar professores
+  const fetchProfessors = useCallback(async () => {
+    setLoadingProfessors(true);
+    try {
+      const q = query(
+        collection(firestore, 'users'),
+        where('userType', '==', 'Professor'),
+        where('approvalStatus', '==', 'aprovado'),
+        orderBy('name', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      const professorsData: Professor[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        professorsData.push({ uid: doc.id, name: data.name || 'Professor' });
+      });
+      setProfessors(professorsData);
+    } catch (err) {
+      console.error('Erro ao buscar professores:', err);
+      setError('Não foi possível carregar os professores. Tente novamente mais tarde.');
+      Alert.alert('Erro', 'Não foi possível carregar os professores. Tente novamente mais tarde.');
+    } finally {
+      setLoadingProfessors(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProfessors();
+  }, [fetchProfessors]);
+
+  // Função para buscar vídeos do professor selecionado
   const fetchVideos = useCallback(async () => {
-    setLoading(true);
+    if (!selectedProfessor) return;
+    setLoadingVideos(true);
     try {
       const q = query(
         collection(firestore, 'videos'),
-        where('url', '!=', ''),
-        orderBy('url'), // Adicionado orderBy 'url' primeiro
+        where('createdBy', '==', selectedProfessor.uid),
         orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
@@ -79,31 +114,69 @@ export default function AlunoVideosScreen() {
       setError('Não foi possível carregar os vídeos. Tente novamente mais tarde.');
       Alert.alert('Erro', 'Não foi possível carregar os vídeos. Tente novamente mais tarde.');
     } finally {
-      setLoading(false);
+      setLoadingVideos(false);
     }
-  }, []);
+  }, [selectedProfessor]);
 
   useEffect(() => {
     fetchVideos();
   }, [fetchVideos]);
 
-  // Função para abrir o modal de reprodução de vídeo
-  const openVideoModal = (video: VideoItem) => {
-    setSelectedVideo(video);
-    setIsModalVisible(true);
+  // Função para extrair o ID do vídeo do YouTube
+  const extractVideoId = (url: string): string | null => {
+    const regex = /(?:\?v=|\/embed\/|\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regex);
+    if (match && match[1]) {
+      console.log('Video ID extraído:', match[1]);
+      return match[1];
+    } else if (url.length === 11) {
+      // Se o usuário inseriu apenas o ID do vídeo
+      console.log('Video ID é o próprio URL:', url);
+      return url;
+    } else {
+      console.log('Falha ao extrair o Video ID da URL:', url);
+      return null;
+    }
   };
 
-  // Função para fechar o modal de reprodução de vídeo
-  const closeVideoModal = () => {
-    setIsModalVisible(false);
-    setSelectedVideo(null);
+  // Função para abrir o vídeo no YouTube
+  const openVideoInYouTube = (url: string) => {
+    const videoId = extractVideoId(url);
+    if (videoId) {
+      const youtubeAppUrl = `vnd.youtube://${videoId}`;
+      const youtubeWebUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+      Linking.openURL(youtubeAppUrl).catch(() => {
+        // Se o aplicativo do YouTube não estiver instalado, abre no navegador
+        Linking.openURL(youtubeWebUrl);
+      });
+    } else {
+      Alert.alert('Erro', 'URL do vídeo inválida.');
+    }
   };
+
+  const renderProfessorItem = useCallback(
+    ({ item }: { item: Professor }) => (
+      <TouchableOpacity
+        style={[styles.professorItem, getConditionalStyle(styles.lightItem, styles.darkItem)]}
+        onPress={() => setSelectedProfessor(item)}
+        accessibilityLabel={`Selecionar professor ${item.name}`}
+        accessibilityRole="button"
+      >
+        <Text style={[styles.professorText, getConditionalStyle(styles.lightText, styles.darkText)]}>
+          {item.name}
+        </Text>
+        <Ionicons name="chevron-forward" size={24} color="#4caf50" />
+      </TouchableOpacity>
+    ),
+    []
+  );
 
   const renderVideoItem = useCallback(
     ({ item }: { item: VideoItem }) => (
       <TouchableOpacity
-        style={[styles.videoItem, getConditionalStyle(styles.lightVideoItem, styles.darkVideoItem)]}
-        onPress={() => openVideoModal(item)}
+        style={[styles.videoItem, getConditionalStyle(styles.lightItem, styles.darkItem)]}
+        onPress={() => openVideoInYouTube(item.url)}
         accessibilityLabel={`Assistir vídeo ${item.title}`}
         accessibilityRole="button"
       >
@@ -119,10 +192,20 @@ export default function AlunoVideosScreen() {
     []
   );
 
-  const keyExtractor = useCallback((item: VideoItem) => item.id, []);
+  const keyExtractorProfessor = useCallback((item: Professor) => item.uid, []);
+  const keyExtractorVideo = useCallback((item: VideoItem) => item.id, []);
 
   const getConditionalStyle = (lightStyle: any, darkStyle: any) => {
     return darkModeEnabled ? darkStyle : lightStyle;
+  };
+
+  const handleBackPress = () => {
+    if (selectedProfessor) {
+      setSelectedProfessor(null);
+      setVideos([]);
+    } else {
+      navigation.goBack();
+    }
   };
 
   return (
@@ -131,19 +214,38 @@ export default function AlunoVideosScreen() {
         barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
         backgroundColor={darkModeEnabled ? '#333' : '#4caf50'}
       />
-      <Header title="Vídeos" showBackButton={false} />
+      <Header
+        title={selectedProfessor ? 'Vídeos' : 'Professores'}
+        showBackButton={true}
+        onBackPress={handleBackPress}
+      />
       <View style={styles.content}>
-        {loading ? (
+        {loadingProfessors || loadingVideos ? (
           <ActivityIndicator size="large" color="#4caf50" />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
-        ) : videos.length === 0 ? (
-          <Text style={styles.emptyText}>Nenhum vídeo disponível no momento.</Text>
+        ) : selectedProfessor ? (
+          videos.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhum vídeo disponível para este professor.</Text>
+          ) : (
+            <FlatList
+              data={videos}
+              keyExtractor={keyExtractorVideo}
+              renderItem={renderVideoItem}
+              contentContainerStyle={styles.listContent}
+              initialNumToRender={10}
+              windowSize={5}
+              maxToRenderPerBatch={10}
+              removeClippedSubviews={true}
+            />
+          )
+        ) : professors.length === 0 ? (
+          <Text style={styles.emptyText}>Nenhum professor disponível no momento.</Text>
         ) : (
           <FlatList
-            data={videos}
-            keyExtractor={keyExtractor}
-            renderItem={renderVideoItem}
+            data={professors}
+            keyExtractor={keyExtractorProfessor}
+            renderItem={renderProfessorItem}
             contentContainerStyle={styles.listContent}
             initialNumToRender={10}
             windowSize={5}
@@ -152,44 +254,12 @@ export default function AlunoVideosScreen() {
           />
         )}
       </View>
-
-      {/* Modal para reprodução de vídeo */}
-      <Modal
-        visible={isModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closeVideoModal}
-      >
-        <View style={styles.modalBackground}>
-          <View style={[styles.modalContainer, getConditionalStyle(styles.lightModal, styles.darkModal)]}>
-            <TouchableOpacity onPress={closeVideoModal} style={styles.closeButton} accessibilityLabel="Fechar vídeo" accessibilityRole="button">
-              <Ionicons name="close" size={28} color="#fff" />
-            </TouchableOpacity>
-            {selectedVideo && (
-              <Video
-                source={{ uri: selectedVideo.url }}
-                rate={1.0}
-                volume={1.0}
-                isMuted={false}
-                resizeMode={ResizeMode.CONTAIN} // Usando o enum ResizeMode
-                shouldPlay
-                useNativeControls
-                style={styles.videoPlayer}
-              />
-            )}
-            {selectedVideo && (
-              <Text style={[styles.videoSummary, getConditionalStyle(styles.lightText, styles.darkText)]}>
-                {selectedVideo.summary}
-              </Text>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  // ... (mantenha os estilos atuais)
   container: {
     flex: 1,
   },
@@ -204,6 +274,15 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
+  professorItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+  },
   videoItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -213,11 +292,14 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
   },
-  lightVideoItem: {
+  lightItem: {
     backgroundColor: '#eee',
   },
-  darkVideoItem: {
+  darkItem: {
     backgroundColor: '#555',
+  },
+  professorText: {
+    fontSize: 16,
   },
   videoInfo: {
     flexDirection: 'row',
@@ -228,17 +310,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     flexShrink: 1,
-  },
-  videoPlayer: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    backgroundColor: '#000',
-  },
-  videoSummary: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#fff',
   },
   listContent: {
     paddingBottom: 20,
@@ -253,28 +324,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 20,
-  },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '90%',
-    backgroundColor: '#4caf50',
-    borderRadius: 8,
-    padding: 20,
-    alignItems: 'center',
-  },
-  lightModal: {
-    backgroundColor: '#4caf50',
-  },
-  darkModal: {
-    backgroundColor: '#006400',
-  },
-  closeButton: {
-    alignSelf: 'flex-end',
   },
   darkText: {
     color: '#fff',

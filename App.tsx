@@ -34,10 +34,16 @@ import SettingsScreen from './screens/SettingsScreen';
 import ProfessorVideosScreen from './screens/ProfessorVideosScreen';
 import AddVideoScreen from './screens/AddVideoScreen';
 import EditVideoScreen from './screens/EditVideoScreen';
-import AlunoVideosScreen from './screens/AlunoVideosScreen'; // Importação da nova tela
+import AlunoVideosScreen from './screens/AlunoVideosScreen'; // Importing the new screen
+import FormulaGameScreen from './screens/FormulaGameScreen'; // Importing the Formula Game screen
+import QuizGameScreen from './screens/QuizGameScreen'; // Importing the Quiz Game screen
 import { ThemeProvider, ThemeContext } from './contexts/ThemeContext';
 
-import { RootStackParamList, AlunoDrawerParamList, ProfessorDrawerParamList } from './types/navigation';
+import {
+  RootStackParamList,
+  AlunoDrawerParamList,
+  ProfessorDrawerParamList,
+} from './types/navigation';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Drawer = createDrawerNavigator();
@@ -79,12 +85,32 @@ function AlunoDrawerNavigator() {
         }}
       />
       <Drawer.Screen
-        name="AlunoVideos" // Nome da nova rota
+        name="AlunoVideos"
         component={AlunoVideosScreen}
         options={{
           title: 'Vídeos',
           drawerIcon: ({ color, size }) => (
             <Ionicons name="videocam" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Games"
+        component={GamesScreen}
+        options={{
+          title: 'Jogos',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="game-controller" color={color} size={size} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="ReadingMaterials"
+        component={ReadingMaterialsScreen}
+        options={{
+          title: 'Materiais de Leitura',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="book" color={color} size={size} />
           ),
         }}
       />
@@ -108,7 +134,6 @@ function AlunoDrawerNavigator() {
           ),
         }}
       />
-      {/* Adicione outras telas para o aluno */}
     </Drawer.Navigator>
   );
 }
@@ -181,7 +206,7 @@ function ProfessorDrawerNavigator() {
       />
       <Drawer.Screen
         name="AlunoStatistics"
-        component={GamesScreen} // Substitua por uma tela de estatísticas real, se disponível
+        component={GamesScreen} // Replace with the actual statistics screen when available
         options={{
           title: 'Estatísticas dos Alunos',
           drawerIcon: ({ color, size }) => (
@@ -209,7 +234,6 @@ function ProfessorDrawerNavigator() {
           ),
         }}
       />
-      {/* Adicione outras telas para o professor */}
     </Drawer.Navigator>
   );
 }
@@ -284,34 +308,27 @@ export default function App() {
     <ThemeProvider>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Login">
-          {/* Telas de Autenticação */}
+          {/* Authentication Screens */}
           <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
           <Stack.Screen name="PasswordReset" component={PasswordResetScreen} options={{ headerShown: false }} />
-          {/* Navegação Principal */}
+          {/* Main Navigation */}
           <Stack.Screen name="AlunoDrawer" component={AlunoDrawerNavigator} options={{ headerShown: false }} />
           <Stack.Screen name="ProfessorDrawer" component={ProfessorDrawerNavigator} options={{ headerShown: false }} />
-          {/* Outras Telas */}
+          {/* Other Screens */}
           <Stack.Screen name="ExerciseDetail" component={ExerciseDetailScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Hint" component={HintScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Games" component={GamesScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="FormulaGame" component={FormulaGameScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="QuizGame" component={QuizGameScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProfessorVideos" component={ProfessorVideosScreen} options={{ headerShown: false }} />
-          <Stack.Screen
-            name="ReadingMaterials"
-            component={ReadingMaterialsScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="ProfessorExercises"
-            component={ProfessorExercisesScreen}
-            options={{ headerShown: false }}
-          />
+          <Stack.Screen name="ReadingMaterials" component={ReadingMaterialsScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfessorExercises" component={ProfessorExercisesScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditExercise" component={EditExerciseScreen} options={{ headerShown: false }} />
-          {/* Adicionando telas de vídeo */}
+          {/* Video Screens */}
           <Stack.Screen name="AddVideo" component={AddVideoScreen} options={{ headerShown: false }} />
           <Stack.Screen name="EditVideo" component={EditVideoScreen} options={{ headerShown: false }} />
-          {/* REMOVA ESTA LINHA PARA EVITAR DUPLICAÇÃO */}
-          {/* <Stack.Screen name="AlunoVideos" component={AlunoVideosScreen} options={{ headerShown: false }} /> */}
+          <Stack.Screen name="AlunoVideos" component={AlunoVideosScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </ThemeProvider>
