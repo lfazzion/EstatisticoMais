@@ -1,6 +1,6 @@
 // screens/FormulaGameScreen.tsx
 
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   SafeAreaView,
   Alert,
   TouchableOpacity,
-} from 'react-native';
-import Header from '../components/Header';
-import { ThemeContext } from '../contexts/ThemeContext';
-import { firestore, auth } from '../firebaseConfig';
-import { doc, runTransaction } from 'firebase/firestore';
-import { DraxProvider, DraxView } from 'react-native-drax';
+  ScrollView,
+} from "react-native";
+import Header from "../components/Header";
+import { ThemeContext } from "../contexts/ThemeContext";
+import { firestore, auth } from "../firebaseConfig";
+import { doc, runTransaction } from "firebase/firestore";
+import { DraxProvider, DraxView } from "react-native-drax";
+import Icon from "react-native-vector-icons/Ionicons"; // Adicionado para ícones
 
 interface Level {
   id: number;
@@ -36,8 +38,8 @@ interface AvailableNumber {
 const levels: Level[] = [
   {
     id: 1,
-    formula: 'Média',
-    formulaDisplay: 'Média = (a + b + c + d) / n = 5',
+    formula: "Média",
+    formulaDisplay: "Média = (a + b + c + d) / n = 5",
     numbers: [2, 3, 4, 5, 7, 8, 6],
     numeratorSlots: 4,
     denominatorSlots: 1,
@@ -50,9 +52,15 @@ const levels: Level[] = [
 export default function FormulaGameScreen() {
   const { darkModeEnabled } = useContext(ThemeContext);
   const [currentLevel, setCurrentLevel] = useState(0);
-  const [selectedNumerators, setSelectedNumerators] = useState<(number | null)[]>([]);
-  const [selectedDenominators, setSelectedDenominators] = useState<(number | null)[]>([]);
-  const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
+  const [selectedNumerators, setSelectedNumerators] = useState<
+    (number | null)[]
+  >([]);
+  const [selectedDenominators, setSelectedDenominators] = useState<
+    (number | null)[]
+  >([]);
+  const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>(
+    [],
+  );
 
   useEffect(() => {
     setupLevel();
@@ -61,7 +69,7 @@ export default function FormulaGameScreen() {
   const setupLevel = () => {
     const level = levels[currentLevel];
     if (!level) {
-      Alert.alert('Parabéns!', 'Você completou todos os níveis!');
+      Alert.alert("Parabéns!", "Você completou todos os níveis!");
       return;
     }
     const numbers = level.numbers.map((value, index) => ({
@@ -74,78 +82,115 @@ export default function FormulaGameScreen() {
     setSelectedDenominators(Array(level.denominatorSlots).fill(null));
   };
 
+  // Implementação da função onDragEnd com atualização de estado funcional e delay para snapback
+  const onDragEnd = (event: any) => {
+    const { numberId, from, fromIndex } = event.dragged.payload;
+    const { droppedOnTarget } = event; // Verificar se foi solto em um alvo válido
+
+    if (!droppedOnTarget) {
+      // Solto em área inválida
+      // **Melhoria:** Atrasar a atualização do estado para permitir a animação de snapback
+      setTimeout(() => {
+        setAvailableNumbers((prevAvailableNumbers) => {
+          const updatedNumbers = [...prevAvailableNumbers];
+          const draggedNumber = updatedNumbers.find(
+            (num) => num.id === numberId,
+          );
+          if (draggedNumber) {
+            draggedNumber.isAvailable = true;
+          }
+          return updatedNumbers;
+        });
+
+        // **Melhoria:** Atualizar selectedNumerators e selectedDenominators de forma funcional
+        if (from === "numerator") {
+          setSelectedNumerators((prevSelectedNumerators) => {
+            const updatedSelectedNumerators = [...prevSelectedNumerators];
+            updatedSelectedNumerators[fromIndex] = null;
+            return updatedSelectedNumerators;
+          });
+        } else if (from === "denominator") {
+          setSelectedDenominators((prevSelectedDenominators) => {
+            const updatedSelectedDenominators = [...prevSelectedDenominators];
+            updatedDenominators[fromIndex] = null;
+            return updatedDenominators;
+          });
+        }
+      }, 300); // Tempo de atraso em milissegundos (ajuste conforme necessário)
+    }
+  };
+
   const onReceiveDragDrop = (
     event: any,
     index: number,
-    type: 'numerator' | 'denominator'
+    type: "numerator" | "denominator",
   ) => {
     const { numberId, from, fromIndex } = event.dragged.payload;
 
-    const updatedSelectedNumerators = [...selectedNumerators];
-    const updatedSelectedDenominators = [...selectedDenominators];
-    const updatedAvailableNumbers = [...availableNumbers];
-
     const draggedNumber = availableNumbers.find((num) => num.id === numberId);
     if (!draggedNumber) return;
 
-    if (from === 'available') {
-      // Marcar o número como indisponível
-      draggedNumber.isAvailable = false;
-    } else if (from === 'numerator') {
-      // Remover número do numerador de origem
-      updatedSelectedNumerators[fromIndex] = null;
-    } else if (from === 'denominator') {
-      // Remover número do denominador de origem
-      updatedSelectedDenominators[fromIndex] = null;
+    // **Melhoria:** Atualizar selectedNumerators e selectedDenominators de forma funcional
+    if (from === "numerator") {
+      setSelectedNumerators((prevSelectedNumerators) => {
+        const updatedSelectedNumerators = [...prevSelectedNumerators];
+        updatedSelectedNumerators[fromIndex] = null;
+        return updatedSelectedNumerators;
+      });
+    } else if (from === "denominator") {
+      setSelectedDenominators((prevSelectedDenominators) => {
+        const updatedSelectedDenominators = [...prevSelectedDenominators];
+        updatedSelectedDenominators[fromIndex] = null;
+        return updatedSelectedDenominators;
+      });
     }
 
-    if (type === 'numerator') {
-      if (updatedSelectedNumerators[index] !== null) {
-        // Retornar o número atual do slot para disponível
-        const num = availableNumbers.find((n) => n.value === updatedSelectedNumerators[index]);
-        if (num) num.isAvailable = true;
-      }
-      // Colocar o número arrastado no slot do numerador
-      updatedSelectedNumerators[index] = draggedNumber.value;
+    // **Melhoria:** Atualizar selectedNumerators e selectedDenominators usando função
+    if (type === "numerator") {
+      setSelectedNumerators((prevSelectedNumerators) => {
+        const updatedSelectedNumerators = [...prevSelectedNumerators];
+        if (updatedSelectedNumerators[index] !== null) {
+          // Retornar o número anterior para disponível
+          setAvailableNumbers((prevAvailableNumbers) => {
+            const updatedNumbers = [...prevAvailableNumbers];
+            const existingNum = updatedNumbers.find(
+              (n) => n.value === updatedSelectedNumerators[index],
+            );
+            if (existingNum) existingNum.isAvailable = true;
+            return updatedNumbers;
+          });
+        }
+        updatedSelectedNumerators[index] = draggedNumber.value;
+        return updatedSelectedNumerators;
+      });
     } else {
-      if (updatedSelectedDenominators[index] !== null) {
-        // Retornar o número atual do slot para disponível
-        const num = availableNumbers.find((n) => n.value === updatedSelectedDenominators[index]);
-        if (num) num.isAvailable = true;
+      setSelectedDenominators((prevSelectedDenominators) => {
+        const updatedSelectedDenominators = [...prevSelectedDenominators];
+        if (updatedSelectedDenominators[index] !== null) {
+          // Retornar o número anterior para disponível
+          setAvailableNumbers((prevAvailableNumbers) => {
+            const updatedNumbers = [...prevAvailableNumbers];
+            const existingNum = updatedNumbers.find(
+              (n) => n.value === selectedDenominators[index],
+            );
+            if (existingNum) existingNum.isAvailable = true;
+            return updatedNumbers;
+          });
+        }
+        updatedSelectedDenominators[index] = draggedNumber.value;
+        return updatedSelectedDenominators;
+      });
+    }
+
+    // **Melhoria:** Atualizar a disponibilidade de forma funcional
+    setAvailableNumbers((prevAvailableNumbers) => {
+      const updatedNumbers = [...prevAvailableNumbers];
+      const num = updatedNumbers.find((n) => n.id === numberId);
+      if (num) {
+        num.isAvailable = false;
       }
-      // Colocar o número arrastado no slot do denominador
-      updatedSelectedDenominators[index] = draggedNumber.value;
-    }
-
-    setSelectedNumerators(updatedSelectedNumerators);
-    setSelectedDenominators(updatedSelectedDenominators);
-    setAvailableNumbers(updatedAvailableNumbers);
-  };
-
-  const onReceiveDragDropAvailable = (event: any) => {
-    const { numberId, from, fromIndex } = event.dragged.payload;
-
-    const updatedSelectedNumerators = [...selectedNumerators];
-    const updatedSelectedDenominators = [...selectedDenominators];
-    const updatedAvailableNumbers = [...availableNumbers];
-
-    const draggedNumber = availableNumbers.find((num) => num.id === numberId);
-    if (!draggedNumber) return;
-
-    if (from === 'numerator') {
-      // Remover número do numerador de origem
-      updatedSelectedNumerators[fromIndex] = null;
-    } else if (from === 'denominator') {
-      // Remover número do denominador de origem
-      updatedSelectedDenominators[fromIndex] = null;
-    }
-
-    // Marcar o número como disponível
-    draggedNumber.isAvailable = true;
-
-    setSelectedNumerators(updatedSelectedNumerators);
-    setSelectedDenominators(updatedSelectedDenominators);
-    setAvailableNumbers(updatedAvailableNumbers);
+      return updatedNumbers;
+    });
   };
 
   const checkAnswer = () => {
@@ -154,7 +199,7 @@ export default function FormulaGameScreen() {
       selectedNumerators.includes(null) ||
       selectedDenominators.includes(null)
     ) {
-      Alert.alert('Erro', 'Preencha todos os espaços.');
+      Alert.alert("Erro", "Preencha todos os espaços.");
       return;
     }
 
@@ -163,7 +208,7 @@ export default function FormulaGameScreen() {
 
     let isCorrect = false;
     switch (level.formula) {
-      case 'Média':
+      case "Média":
         const sum = numerators.reduce((acc, val) => acc + val, 0);
         const denominator = denominators[0];
         const avg = sum / denominator;
@@ -175,9 +220,9 @@ export default function FormulaGameScreen() {
     }
 
     if (isCorrect) {
-      Alert.alert('Correto!', 'Você acertou!', [
+      Alert.alert("Correto!", "Você acertou!", [
         {
-          text: 'Próximo Nível',
+          text: "Próximo Nível",
           onPress: () => {
             updateXP(level.xp);
             setCurrentLevel((prev) => prev + 1);
@@ -185,7 +230,7 @@ export default function FormulaGameScreen() {
         },
       ]);
     } else {
-      Alert.alert('Errado', 'Tente novamente.');
+      Alert.alert("Errado", "Tente novamente.");
     }
   };
 
@@ -193,18 +238,18 @@ export default function FormulaGameScreen() {
     try {
       const user = auth.currentUser;
       if (user) {
-        const userRef = doc(firestore, 'users', user.uid);
+        const userRef = doc(firestore, "users", user.uid);
         await runTransaction(firestore, async (transaction) => {
           const userDoc = await transaction.get(userRef);
           if (!userDoc.exists()) {
-            throw 'Usuário não existe!';
+            throw "Usuário não existe!";
           }
           const newXP = (userDoc.data().xp || 0) + xpToAdd;
           transaction.update(userRef, { xp: newXP });
         });
       }
     } catch (error) {
-      console.error('Erro ao atualizar XP:', error);
+      console.error("Erro ao atualizar XP:", error);
     }
   };
 
@@ -217,127 +262,174 @@ export default function FormulaGameScreen() {
         ]}
       >
         <StatusBar
-          barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
-          backgroundColor={darkModeEnabled ? '#000' : '#4caf50'}
+          barStyle={darkModeEnabled ? "light-content" : "dark-content"}
+          backgroundColor={darkModeEnabled ? "#121212" : "#4caf50"}
         />
         <Header title="Jogo de Fórmulas" showBackButton />
-        <View style={styles.content}>
-          <Text
-            style={[
-              styles.instructionText,
-              darkModeEnabled ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Complete com os valores necessários para que a fórmula esteja
-            correta:
-          </Text>
-          <Text
-            style={[
-              styles.levelText,
-              darkModeEnabled ? styles.darkText : styles.lightText,
-            ]}
-          >
-            Nível {currentLevel + 1}
-          </Text>
-          <Text
-            style={[
-              styles.formulaText,
-              darkModeEnabled ? styles.darkText : styles.lightText,
-            ]}
-          >
-            {levels[currentLevel]?.formulaDisplay}
-          </Text>
-          {/* Fórmula */}
-          <View style={styles.formulaContainer}>
-            {/* Numeradores */}
-            <View style={styles.numeratorContainer}>
-              {selectedNumerators.map((num, index) => (
-                <DraxView
-                  key={`numerator-${index}`}
-                  style={[
-                    styles.slot,
-                    num !== null && styles.filledSlot,
-                  ]}
-                  receivingStyle={styles.receiving}
-                  renderContent={() =>
-                    num !== null ? (
-                      <Text style={styles.slotText}>{num}</Text>
-                    ) : null
-                  }
-                  onReceiveDragDrop={(event) =>
-                    onReceiveDragDrop(event, index, 'numerator')
-                  }
-                  payload={{
-                    from: 'numerator',
-                    fromIndex: index,
-                    numberId: availableNumbers.find((n) => n.value === num)?.id,
-                  }}
-                  draggable={false}
-                  receptive={true}
-                />
-              ))}
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+          <View style={styles.content}>
+            <Text
+              style={[
+                styles.instructionText,
+                darkModeEnabled ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Complete com os valores necessários para que a fórmula esteja
+              correta:
+            </Text>
+            <Text
+              style={[
+                styles.levelText,
+                darkModeEnabled ? styles.darkText : styles.lightText,
+              ]}
+            >
+              Nível {currentLevel + 1}
+            </Text>
+            <Text
+              style={[
+                styles.formulaText,
+                darkModeEnabled ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {levels[currentLevel]?.formulaDisplay}
+            </Text>
+            {/* Fórmula */}
+            <View style={styles.formulaContainer}>
+              {/* Numeradores */}
+              <View style={styles.numeratorContainer}>
+                {selectedNumerators.map((num, index) => (
+                  <DraxView
+                    key={`numerator-${index}`}
+                    style={[
+                      styles.slot,
+                      num !== null && styles.filledSlot,
+                      darkModeEnabled ? styles.darkSlot : styles.lightSlot,
+                    ]}
+                    receivingStyle={styles.receiving}
+                    renderContent={() =>
+                      num !== null ? (
+                        <Text style={styles.slotText}>{num}</Text>
+                      ) : (
+                        <Icon
+                          name="add-circle-outline"
+                          size={24}
+                          color={darkModeEnabled ? "#fff" : "#333"}
+                        />
+                      )
+                    }
+                    onReceiveDragDrop={(event) =>
+                      onReceiveDragDrop(event, index, "numerator")
+                    }
+                    dragPayload={
+                      num !== null
+                        ? {
+                            numberId: availableNumbers.find(
+                              (n) => n.value === num,
+                            )?.id,
+                            from: "numerator",
+                            fromIndex: index,
+                          }
+                        : null
+                    }
+                    draggable={num !== null}
+                    receptive={true}
+                    animateSnapback={true} // Garantir que o snapback esteja ativado
+                    onDragEnd={onDragEnd} // Adicionar onDragEnd
+                  />
+                ))}
+              </View>
+              {/* Linha de Fração */}
+              <View style={styles.fractionLine} />
+              {/* Denominadores */}
+              <View style={styles.denominatorContainer}>
+                {selectedDenominators.map((num, index) => (
+                  <DraxView
+                    key={`denominator-${index}`}
+                    style={[
+                      styles.slot,
+                      num !== null && styles.filledSlot,
+                      darkModeEnabled ? styles.darkSlot : styles.lightSlot,
+                    ]}
+                    receivingStyle={styles.receiving}
+                    renderContent={() =>
+                      num !== null ? (
+                        <Text style={styles.slotText}>{num}</Text>
+                      ) : (
+                        <Icon
+                          name="add-circle-outline"
+                          size={24}
+                          color={darkModeEnabled ? "#fff" : "#333"}
+                        />
+                      )
+                    }
+                    onReceiveDragDrop={(event) =>
+                      onReceiveDragDrop(event, index, "denominator")
+                    }
+                    dragPayload={
+                      num !== null
+                        ? {
+                            numberId: availableNumbers.find(
+                              (n) => n.value === num,
+                            )?.id,
+                            from: "denominator",
+                            fromIndex: index,
+                          }
+                        : null
+                    }
+                    draggable={num !== null}
+                    receptive={true}
+                    animateSnapback={true} // Garantir que o snapback esteja ativado
+                    onDragEnd={onDragEnd} // Adicionar onDragEnd
+                  />
+                ))}
+              </View>
+              {/* Igualdade com o resultado */}
+              <Text style={styles.equalsText}>
+                = {levels[currentLevel]?.result}
+              </Text>
             </View>
-            {/* Linha de Fração */}
-            <View style={styles.fractionLine} />
-            {/* Denominadores */}
-            <View style={styles.denominatorContainer}>
-              {selectedDenominators.map((num, index) => (
-                <DraxView
-                  key={`denominator-${index}`}
-                  style={[
-                    styles.slot,
-                    num !== null && styles.filledSlot,
-                  ]}
-                  receivingStyle={styles.receiving}
-                  renderContent={() =>
-                    num !== null ? (
-                      <Text style={styles.slotText}>{num}</Text>
-                    ) : null
-                  }
-                  onReceiveDragDrop={(event) =>
-                    onReceiveDragDrop(event, index, 'denominator')
-                  }
-                  payload={{
-                    from: 'denominator',
-                    fromIndex: index,
-                    numberId: availableNumbers.find((n) => n.value === num)?.id,
-                  }}
-                  draggable={false}
-                  receptive={true}
-                />
-              ))}
+            {/* Números Disponíveis */}
+            <View style={styles.availableNumbersContainer}>
+              <Text
+                style={[
+                  styles.availableText,
+                  darkModeEnabled ? styles.darkText : styles.lightText,
+                ]}
+              >
+                Números Disponíveis:
+              </Text>
+              <View style={styles.numbersContainer}>
+                {availableNumbers
+                  .filter((num) => num.isAvailable)
+                  .map((num) => (
+                    <DraxView
+                      key={`available-${num.id}`}
+                      style={[
+                        styles.numberItem,
+                        darkModeEnabled
+                          ? styles.darkNumberItem
+                          : styles.lightNumberItem,
+                      ]}
+                      draggingStyle={styles.dragging}
+                      dragReleasedStyle={styles.dragging}
+                      hoverDraggingStyle={styles.hoverDragging}
+                      dragPayload={{
+                        numberId: num.id,
+                        from: "available",
+                      }}
+                      longPressDelay={150}
+                      renderContent={() => (
+                        <Text style={styles.numberText}>{num.value}</Text>
+                      )}
+                      draggable={num.isAvailable}
+                      animateSnapback={true} // Garantir que o snapback esteja ativado
+                      onDragEnd={onDragEnd} // Adicionar onDragEnd
+                    />
+                  ))}
+              </View>
             </View>
-            {/* Igualdade com o resultado */}
-            <Text style={styles.equalsText}>= {levels[currentLevel]?.result}</Text>
           </View>
-          {/* Números Disponíveis */}
-          <View style={styles.availableNumbersContainer}>
-            <View style={styles.numbersContainer}>
-              {availableNumbers.map((num, index) => (
-                <DraxView
-                  key={`number-${num.id}`}
-                  style={[
-                    styles.numberItem,
-                    !num.isAvailable && styles.numberItemDisabled,
-                  ]}
-                  draggingStyle={styles.dragging}
-                  dragReleasedStyle={styles.dragging}
-                  hoverDraggingStyle={styles.dragging}
-                  dragPayload={{
-                    numberId: num.id,
-                    from: 'available',
-                  }}
-                  longPressDelay={0}
-                  renderContent={() => (
-                    <Text style={styles.numberText}>{num.value}</Text>
-                  )}
-                  draggable={num.isAvailable}
-                  receptive={false}
-                />
-              ))}
-            </View>
-          </View>
-        </View>
+        </ScrollView>
         <TouchableOpacity
           style={[
             styles.button,
@@ -357,11 +449,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
   lightContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   darkContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: "#121212",
   },
   content: {
     flex: 1,
@@ -369,106 +465,147 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 10,
   },
   levelText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 10,
   },
   formulaText: {
     fontSize: 18,
-    textAlign: 'center',
+    textAlign: "center",
     marginVertical: 20,
   },
   formulaContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   numeratorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
   },
   fractionLine: {
-    width: '80%',
+    width: "80%",
     height: 2,
-    backgroundColor: '#000',
+    backgroundColor: "#4caf50",
     marginVertical: 5,
   },
   denominatorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
   },
   equalsText: {
     fontSize: 18,
     marginTop: 10,
+    fontWeight: "bold",
+    color: "#ff9800",
   },
   slot: {
     width: 60,
     height: 60,
     borderWidth: 2,
-    borderColor: '#4caf50',
+    borderColor: "#4caf50",
+    borderRadius: 8,
     margin: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#e8f5e9",
   },
   filledSlot: {
-    backgroundColor: '#d3d3d3',
+    backgroundColor: "#a5d6a7",
+  },
+  darkSlot: {
+    borderColor: "#81c784",
+    backgroundColor: "#424242",
+  },
+  lightSlot: {
+    borderColor: "#4caf50",
+    backgroundColor: "#e8f5e9",
   },
   receiving: {
-    borderColor: '#000',
+    borderColor: "#ff9800",
+    borderStyle: "dashed",
   },
   slotText: {
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
   },
   availableNumbersContainer: {
     marginBottom: 20,
   },
+  availableText: {
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: "center",
+  },
   numbersContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "center",
+    flexWrap: "wrap",
+  },
+  numbersContentContainer: {
+    justifyContent: "center",
   },
   numberItem: {
     width: 60,
     height: 60,
-    backgroundColor: '#4caf50',
+    backgroundColor: "#4caf50",
     margin: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 30,
+    elevation: 2, // Sombra para destacar
+  },
+  darkNumberItem: {
+    backgroundColor: "#388e3c",
+  },
+  lightNumberItem: {
+    backgroundColor: "#4caf50",
   },
   numberItemDisabled: {
-    backgroundColor: '#a5d6a7',
-    opacity: 0.5,
+    backgroundColor: "#a5d6a7",
+    opacity: 0.6,
   },
   dragging: {
-    opacity: 0.5,
+    opacity: 0.3,
+  },
+  hoverDragging: {
+    borderColor: "#ff9800",
+    borderWidth: 2,
   },
   numberText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
+    fontWeight: "bold",
   },
   button: {
     borderRadius: 8,
     padding: 15,
-    alignItems: 'center',
-    margin: 20,
+    alignItems: "center",
+    marginHorizontal: 20,
+    marginBottom: 10,
   },
   lightButton: {
-    backgroundColor: '#4caf50',
+    backgroundColor: "#4caf50",
   },
   darkButton: {
-    backgroundColor: '#006400',
+    backgroundColor: "#388e3c",
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 18,
+    fontWeight: "bold",
   },
   lightText: {
-    color: '#333',
+    color: "#333",
   },
   darkText: {
-    color: '#fff',
+    color: "#fff",
   },
 });
