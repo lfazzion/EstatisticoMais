@@ -112,11 +112,11 @@ export default function FormulaGameScreen() {
         } else if (from === "denominator") {
           setSelectedDenominators((prevSelectedDenominators) => {
             const updatedSelectedDenominators = [...prevSelectedDenominators];
-            updatedDenominators[fromIndex] = null;
-            return updatedDenominators;
+            updatedSelectedDenominators[fromIndex] = null;
+            return updatedSelectedDenominators;
           });
         }
-      }, 300); // Tempo de atraso em milissegundos (ajuste conforme necessário)
+      }, 1); // Tempo de atraso em milissegundos (ajuste conforme necessário)
     }
   };
 
@@ -335,6 +335,8 @@ export default function FormulaGameScreen() {
                     receptive={true}
                     animateSnapback={true} // Garantir que o snapback esteja ativado
                     onDragEnd={onDragEnd} // Adicionar onDragEnd
+                    draggingStyle={styles.dragging}
+                    dragReleasedStyle={styles.released} // Alterado para styles.released
                   />
                 ))}
               </View>
@@ -380,6 +382,8 @@ export default function FormulaGameScreen() {
                     receptive={true}
                     animateSnapback={true} // Garantir que o snapback esteja ativado
                     onDragEnd={onDragEnd} // Adicionar onDragEnd
+                    draggingStyle={styles.dragging}
+                    dragReleasedStyle={styles.released} // Alterado para styles.released
                   />
                 ))}
               </View>
@@ -411,7 +415,7 @@ export default function FormulaGameScreen() {
                           : styles.lightNumberItem,
                       ]}
                       draggingStyle={styles.dragging}
-                      dragReleasedStyle={styles.dragging}
+                      dragReleasedStyle={styles.released} // Alterado para styles.released
                       hoverDraggingStyle={styles.hoverDragging}
                       dragPayload={{
                         numberId: num.id,
@@ -574,6 +578,9 @@ const styles = StyleSheet.create({
   },
   dragging: {
     opacity: 0.3,
+  },
+  released: { // Novo estilo adicionado
+    opacity: 1,
   },
   hoverDragging: {
     borderColor: "#ff9800",
