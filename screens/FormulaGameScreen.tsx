@@ -16,7 +16,8 @@ import { ThemeContext } from "../contexts/ThemeContext";
 import { firestore, auth } from "../firebaseConfig";
 import { doc, runTransaction } from "firebase/firestore";
 import { DraxProvider, DraxView } from "react-native-drax";
-import Icon from "react-native-vector-icons/Ionicons"; // Adicionado para ícones
+import Icon from "react-native-vector-icons/Ionicons";
+import MixedText from "../components/MixedText"; // Importando o MixedText
 
 interface Level {
   id: number;
@@ -39,14 +40,33 @@ const levels: Level[] = [
   {
     id: 1,
     formula: "Média",
-    formulaDisplay: "Média = (a + b + c + d) / n = 5",
-    numbers: [2, 3, 4, 5, 7, 8, 6],
+    formulaDisplay: "$$\\frac{a + b}{n} = 7$$", // Usando LaTeX
+    numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    numeratorSlots: 2,
+    denominatorSlots: 1,
+    result: 7,
+    xp: 10,
+  },
+  {
+    id: 1,
+    formula: "Média",
+    formulaDisplay: "$$\\frac{a + b + c}{n} = 4$$", // Usando LaTeX
+    numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    numeratorSlots: 3,
+    denominatorSlots: 1,
+    result: 4,
+    xp: 10,
+  },
+  {
+    id: 1,
+    formula: "Média",
+    formulaDisplay: "$$\\frac{a + b + c + d}{n} = 5$$", // Usando LaTeX
+    numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     numeratorSlots: 4,
     denominatorSlots: 1,
     result: 5,
     xp: 10,
-  },
-  // Outros níveis podem ser adicionados aqui seguindo o mesmo formato
+  }
 ];
 
 export default function FormulaGameScreen() {
@@ -59,7 +79,7 @@ export default function FormulaGameScreen() {
     (number | null)[]
   >([]);
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>(
-    [],
+    []
   );
 
   useEffect(() => {
@@ -82,6 +102,13 @@ export default function FormulaGameScreen() {
     setSelectedDenominators(Array(level.denominatorSlots).fill(null));
   };
 
+  // Função para obter o valor do número a partir do ID
+  const getNumberValueById = (id: number | null): number | null => {
+    if (id === null) return null;
+    const num = availableNumbers.find((n) => n.id === id);
+    return num ? num.value : null;
+  };
+
   // Implementação da função onDragEnd com atualização de estado funcional e delay para snapback
   const onDragEnd = (event: any) => {
     const { numberId, from, fromIndex } = event.dragged.payload;
@@ -91,16 +118,11 @@ export default function FormulaGameScreen() {
       // Solto em área inválida
       // **Melhoria:** Atrasar a atualização do estado para permitir a animação de snapback
       setTimeout(() => {
-        setAvailableNumbers((prevAvailableNumbers) => {
-          const updatedNumbers = [...prevAvailableNumbers];
-          const draggedNumber = updatedNumbers.find(
-            (num) => num.id === numberId,
-          );
-          if (draggedNumber) {
-            draggedNumber.isAvailable = true;
-          }
-          return updatedNumbers;
-        });
+        setAvailableNumbers((prevAvailableNumbers) =>
+          prevAvailableNumbers.map((num) =>
+            num.id === numberId ? { ...num, isAvailable: true } : num
+          )
+        );
 
         // **Melhoria:** Atualizar selectedNumerators e selectedDenominators de forma funcional
         if (from === "numerator") {
@@ -116,14 +138,14 @@ export default function FormulaGameScreen() {
             return updatedSelectedDenominators;
           });
         }
-      }, 1); // Tempo de atraso em milissegundos (ajuste conforme necessário)
+      }, 100); // Tempo de atraso em milissegundos (ajuste conforme necessário)
     }
   };
 
   const onReceiveDragDrop = (
     event: any,
     index: number,
-    type: "numerator" | "denominator",
+    type: "numerator" | "denominator"
   ) => {
     const { numberId, from, fromIndex } = event.dragged.payload;
 
@@ -150,47 +172,40 @@ export default function FormulaGameScreen() {
       setSelectedNumerators((prevSelectedNumerators) => {
         const updatedSelectedNumerators = [...prevSelectedNumerators];
         if (updatedSelectedNumerators[index] !== null) {
-          // Retornar o número anterior para disponível
-          setAvailableNumbers((prevAvailableNumbers) => {
-            const updatedNumbers = [...prevAvailableNumbers];
-            const existingNum = updatedNumbers.find(
-              (n) => n.value === updatedSelectedNumerators[index],
-            );
-            if (existingNum) existingNum.isAvailable = true;
-            return updatedNumbers;
-          });
+          // Retornar o número anterior para disponível de forma imutável
+          const existingNumberId = updatedSelectedNumerators[index];
+          setAvailableNumbers((prevAvailableNumbers) =>
+            prevAvailableNumbers.map((n) =>
+              n.id === existingNumberId ? { ...n, isAvailable: true } : n
+            )
+          );
         }
-        updatedSelectedNumerators[index] = draggedNumber.value;
+        updatedSelectedNumerators[index] = numberId;
         return updatedSelectedNumerators;
       });
     } else {
       setSelectedDenominators((prevSelectedDenominators) => {
         const updatedSelectedDenominators = [...prevSelectedDenominators];
         if (updatedSelectedDenominators[index] !== null) {
-          // Retornar o número anterior para disponível
-          setAvailableNumbers((prevAvailableNumbers) => {
-            const updatedNumbers = [...prevAvailableNumbers];
-            const existingNum = updatedNumbers.find(
-              (n) => n.value === selectedDenominators[index],
-            );
-            if (existingNum) existingNum.isAvailable = true;
-            return updatedNumbers;
-          });
+          // Retornar o número anterior para disponível de forma imutável
+          const existingNumberId = updatedSelectedDenominators[index];
+          setAvailableNumbers((prevAvailableNumbers) =>
+            prevAvailableNumbers.map((n) =>
+              n.id === existingNumberId ? { ...n, isAvailable: true } : n
+            )
+          );
         }
-        updatedSelectedDenominators[index] = draggedNumber.value;
+        updatedSelectedDenominators[index] = numberId;
         return updatedSelectedDenominators;
       });
     }
 
-    // **Melhoria:** Atualizar a disponibilidade de forma funcional
-    setAvailableNumbers((prevAvailableNumbers) => {
-      const updatedNumbers = [...prevAvailableNumbers];
-      const num = updatedNumbers.find((n) => n.id === numberId);
-      if (num) {
-        num.isAvailable = false;
-      }
-      return updatedNumbers;
-    });
+    // **Melhoria:** Atualizar a disponibilidade de forma imutável
+    setAvailableNumbers((prevAvailableNumbers) =>
+      prevAvailableNumbers.map((n) =>
+        n.id === numberId ? { ...n, isAvailable: false } : n
+      )
+    );
   };
 
   const checkAnswer = () => {
@@ -203,14 +218,18 @@ export default function FormulaGameScreen() {
       return;
     }
 
-    const numerators = selectedNumerators as number[];
-    const denominators = selectedDenominators as number[];
+    const numeratorsValues = selectedNumerators.map((id) =>
+      getNumberValueById(id)
+    ) as number[];
+    const denominatorsValues = selectedDenominators.map((id) =>
+      getNumberValueById(id)
+    ) as number[];
 
     let isCorrect = false;
     switch (level.formula) {
       case "Média":
-        const sum = numerators.reduce((acc, val) => acc + val, 0);
-        const denominator = denominators[0];
+        const sum = numeratorsValues.reduce((acc, val) => acc + val, 0);
+        const denominator = denominatorsValues[0];
         const avg = sum / denominator;
         isCorrect = Math.abs(avg - level.result) < 0.01;
         break;
@@ -274,7 +293,7 @@ export default function FormulaGameScreen() {
                 darkModeEnabled ? styles.darkText : styles.lightText,
               ]}
             >
-              Complete com os valores necessários para que a fórmula esteja
+              Arraste os valores necessários para que a fórmula esteja
               correta:
             </Text>
             <Text
@@ -285,112 +304,150 @@ export default function FormulaGameScreen() {
             >
               Nível {currentLevel + 1}
             </Text>
-            <Text
+            {/* Exibindo a fórmula com MixedText */}
+            <MixedText
+              content={levels[currentLevel]?.formulaDisplay}
               style={[
                 styles.formulaText,
                 darkModeEnabled ? styles.darkText : styles.lightText,
               ]}
-            >
-              {levels[currentLevel]?.formulaDisplay}
-            </Text>
-            {/* Fórmula */}
+            />
+            {/* Fórmula Interativa */}
             <View style={styles.formulaContainer}>
-              {/* Numeradores */}
-              <View style={styles.numeratorContainer}>
-                {selectedNumerators.map((num, index) => (
-                  <DraxView
-                    key={`numerator-${index}`}
-                    style={[
-                      styles.slot,
-                      num !== null && styles.filledSlot,
-                      darkModeEnabled ? styles.darkSlot : styles.lightSlot,
-                    ]}
-                    receivingStyle={styles.receiving}
-                    renderContent={() =>
-                      num !== null ? (
-                        <Text style={styles.slotText}>{num}</Text>
-                      ) : (
-                        <Icon
-                          name="add-circle-outline"
-                          size={24}
-                          color={darkModeEnabled ? "#fff" : "#333"}
-                        />
-                      )
-                    }
-                    onReceiveDragDrop={(event) =>
-                      onReceiveDragDrop(event, index, "numerator")
-                    }
-                    dragPayload={
-                      num !== null
-                        ? {
-                            numberId: availableNumbers.find(
-                              (n) => n.value === num,
-                            )?.id,
-                            from: "numerator",
-                            fromIndex: index,
+              {/* Fração e Igualdade em uma linha */}
+              <View style={styles.fractionWithEquals}>
+                {/* Fração */}
+                <View style={styles.fraction}>
+                  {/* Numeradores */}
+                  <View style={styles.numeratorContainer}>
+                    {selectedNumerators.map((numId, index) => (
+                      <React.Fragment key={`numerator-fragment-${index}`}>
+                        <DraxView
+                          key={`numerator-${index}`}
+                          style={[
+                            styles.slot,
+                            numId !== null && styles.filledSlot,
+                            darkModeEnabled
+                              ? styles.darkSlot
+                              : styles.lightSlot,
+                          ]}
+                          receivingStyle={styles.receiving}
+                          renderContent={() =>
+                            numId !== null ? (
+                              <Text
+                                style={[
+                                  styles.slotText,
+                                  darkModeEnabled
+                                    ? styles.whiteText
+                                    : styles.blackText,
+                                ]}
+                              >
+                                {getNumberValueById(numId)}
+                              </Text>
+                            ) : (
+                              <Icon
+                                name="add-circle-outline"
+                                size={24}
+                                color={darkModeEnabled ? "#fff" : "#333"}
+                              />
+                            )
                           }
-                        : null
-                    }
-                    draggable={num !== null}
-                    receptive={true}
-                    animateSnapback={true} // Garantir que o snapback esteja ativado
-                    onDragEnd={onDragEnd} // Adicionar onDragEnd
-                    draggingStyle={styles.dragging}
-                    dragReleasedStyle={styles.released} // Alterado para styles.released
-                  />
-                ))}
-              </View>
-              {/* Linha de Fração */}
-              <View style={styles.fractionLine} />
-              {/* Denominadores */}
-              <View style={styles.denominatorContainer}>
-                {selectedDenominators.map((num, index) => (
-                  <DraxView
-                    key={`denominator-${index}`}
-                    style={[
-                      styles.slot,
-                      num !== null && styles.filledSlot,
-                      darkModeEnabled ? styles.darkSlot : styles.lightSlot,
-                    ]}
-                    receivingStyle={styles.receiving}
-                    renderContent={() =>
-                      num !== null ? (
-                        <Text style={styles.slotText}>{num}</Text>
-                      ) : (
-                        <Icon
-                          name="add-circle-outline"
-                          size={24}
-                          color={darkModeEnabled ? "#fff" : "#333"}
-                        />
-                      )
-                    }
-                    onReceiveDragDrop={(event) =>
-                      onReceiveDragDrop(event, index, "denominator")
-                    }
-                    dragPayload={
-                      num !== null
-                        ? {
-                            numberId: availableNumbers.find(
-                              (n) => n.value === num,
-                            )?.id,
-                            from: "denominator",
-                            fromIndex: index,
+                          onReceiveDragDrop={(event) =>
+                            onReceiveDragDrop(event, index, "numerator")
                           }
-                        : null
-                    }
-                    draggable={num !== null}
-                    receptive={true}
-                    animateSnapback={true} // Garantir que o snapback esteja ativado
-                    onDragEnd={onDragEnd} // Adicionar onDragEnd
-                    draggingStyle={styles.dragging}
-                    dragReleasedStyle={styles.released} // Alterado para styles.released
-                  />
-                ))}
+                          dragPayload={
+                            numId !== null
+                              ? {
+                                  numberId: numId,
+                                  from: "numerator",
+                                  fromIndex: index,
+                                }
+                              : null
+                          }
+                          draggable={numId !== null}
+                          receptive={true}
+                          animateSnapback={true} // Garantir que o snapback esteja ativado
+                          onDragEnd={onDragEnd} // Adicionar onDragEnd
+                          draggingStyle={styles.dragging}
+                          dragReleasedStyle={styles.released} // Alterado para styles.released
+                        />
+                        {index < selectedNumerators.length - 1 && (
+                          <Text
+                            style={[
+                              styles.plusText,
+                              darkModeEnabled
+                                ? styles.darkText
+                                : styles.lightText,
+                            ]}
+                          >
+                            +
+                          </Text>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </View>
+                  {/* Linha de Fração */}
+                  <View style={styles.fractionLine} />
+                  {/* Denominadores */}
+                  <View style={styles.denominatorContainer}>
+                    {selectedDenominators.map((numId, index) => (
+                      <DraxView
+                        key={`denominator-${index}`}
+                        style={[
+                          styles.slot,
+                          numId !== null && styles.filledSlot,
+                          darkModeEnabled
+                            ? styles.darkSlot
+                            : styles.lightSlot,
+                        ]}
+                        receivingStyle={styles.receiving}
+                        renderContent={() =>
+                          numId !== null ? (
+                            <Text
+                              style={[
+                                styles.slotText,
+                                darkModeEnabled
+                                  ? styles.whiteText
+                                  : styles.blackText,
+                              ]}
+                            >
+                              {getNumberValueById(numId)}
+                            </Text>
+                          ) : (
+                            <Icon
+                              name="add-circle-outline"
+                              size={24}
+                              color={darkModeEnabled ? "#fff" : "#333"}
+                            />
+                          )
+                        }
+                        onReceiveDragDrop={(event) =>
+                          onReceiveDragDrop(event, index, "denominator")
+                        }
+                        dragPayload={
+                          numId !== null
+                            ? {
+                                numberId: numId,
+                                from: "denominator",
+                                fromIndex: index,
+                              }
+                            : null
+                        }
+                        draggable={numId !== null}
+                        receptive={true}
+                        animateSnapback={true} // Garantir que o snapback esteja ativado
+                        onDragEnd={onDragEnd} // Adicionar onDragEnd
+                        draggingStyle={styles.dragging}
+                        dragReleasedStyle={styles.released} // Alterado para styles.released
+                      />
+                    ))}
+                  </View>
+                </View>
+                {/* Igualdade com o resultado */}
+                <Text style={styles.equalsText}>
+                  = {levels[currentLevel]?.result}
+                </Text>
               </View>
-              {/* Igualdade com o resultado */}
-              <Text style={styles.equalsText}>
-                = {levels[currentLevel]?.result}
-              </Text>
             </View>
             {/* Números Disponíveis */}
             <View style={styles.availableNumbersContainer}>
@@ -470,13 +527,13 @@ const styles = StyleSheet.create({
   instructionText: {
     fontSize: 16,
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 15,
   },
   levelText: {
     fontSize: 20,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 5,
   },
   formulaText: {
     fontSize: 18,
@@ -485,7 +542,15 @@ const styles = StyleSheet.create({
   },
   formulaContainer: {
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 30,
+  },
+  fractionWithEquals: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  fraction: {
+    alignItems: "center",
+    marginRight: 10, // Espaço entre a fração e o sinal de igual
   },
   numeratorContainer: {
     flexDirection: "row",
@@ -493,10 +558,10 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   fractionLine: {
-    width: "80%",
-    height: 2,
+    width: "99%",
+    height: 4,
     backgroundColor: "#4caf50",
-    marginVertical: 5,
+    marginVertical: 8,
   },
   denominatorContainer: {
     flexDirection: "row",
@@ -504,18 +569,18 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   equalsText: {
-    fontSize: 18,
-    marginTop: 10,
-    fontWeight: "bold",
+    fontSize: 34,
+    marginLeft: 4, // Espaço entre a fração e o sinal de igual
+    fontWeight: "normal",
     color: "#ff9800",
   },
   slot: {
-    width: 60,
-    height: 60,
+    width: 52,
+    height: 52,
     borderWidth: 2,
     borderColor: "#4caf50",
     borderRadius: 8,
-    margin: 5,
+    margin: 2,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#e8f5e9",
@@ -538,7 +603,19 @@ const styles = StyleSheet.create({
   slotText: {
     fontSize: 20,
     fontWeight: "bold",
+  },
+  whiteText: {
     color: "#fff",
+  },
+  blackText: {
+    color: "#000",
+  },
+  plusText: {
+    fontSize: 24,
+    marginHorizontal: 5,
+    color: "#4caf50",
+    fontWeight: "bold",
+    alignSelf: "center",
   },
   availableNumbersContainer: {
     marginBottom: 20,
@@ -557,10 +634,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   numberItem: {
-    width: 60,
-    height: 60,
+    width: 55,
+    height: 55,
     backgroundColor: "#4caf50",
-    margin: 10,
+    margin: 6,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 30,
@@ -579,7 +656,7 @@ const styles = StyleSheet.create({
   dragging: {
     opacity: 0.3,
   },
-  released: { // Novo estilo adicionado
+  released: {
     opacity: 1,
   },
   hoverDragging: {

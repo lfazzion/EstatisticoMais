@@ -93,6 +93,7 @@ const DisplayMath: React.FC<{ math: string; fontSize: number; color: string }> =
 };
 
 function parseContent(content: string): Part[] {
+  if (!content) return []; // Adicionada a verificação para conteúdo indefinido
   const regex = /(\$\$.*?\$\$|\$.*?\$)/gs;
   const parts: Part[] = [];
   let lastIndex = 0;
@@ -130,8 +131,6 @@ function parseContent(content: string): Part[] {
 
 const styles = StyleSheet.create({
   inlineMath: {
-    // Ajustar o alinhamento vertical para coincidir com o texto
-    // Isso pode variar dependendo das necessidades do seu projeto
     alignSelf: 'center',
   },
   displayMathContainer: {
