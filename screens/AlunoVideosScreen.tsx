@@ -12,8 +12,9 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
-  Modal, // Importando Modal
-  Dimensions, // Importando Dimensions
+  Modal,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -29,7 +30,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
-import YoutubePlayer from 'react-native-youtube-iframe'; // Importando YoutubePlayer
+import YoutubePlayer from 'react-native-youtube-iframe';
 
 interface VideoItem {
   id: string;
@@ -60,6 +61,7 @@ export default function AlunoVideosScreen() {
   // Estados para o Modal de Vídeo
   const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
+  const [currentVideoSummary, setCurrentVideoSummary] = useState<string>(''); // Novo estado para o sumário
 
   // Função para buscar professores
   const fetchProfessors = useCallback(async () => {
@@ -146,10 +148,11 @@ export default function AlunoVideosScreen() {
   };
 
   // Função para abrir o vídeo no Modal
-  const openVideo = (url: string) => {
+  const openVideo = (url: string, summary: string) => {
     const videoId = extractVideoId(url);
     if (videoId) {
       setCurrentVideoId(videoId);
+      setCurrentVideoSummary(summary); // Define o sumário atual
       setIsModalVisible(true);
     } else {
       Alert.alert('Erro', 'URL do vídeo inválida.');
@@ -159,14 +162,12 @@ export default function AlunoVideosScreen() {
   const renderProfessorItem = useCallback(
     ({ item }: { item: Professor }) => (
       <TouchableOpacity
-        style={[styles.professorItem, getConditionalStyle(styles.lightItem, styles.darkItem)]}
+        style={styles.itemContainer}
         onPress={() => setSelectedProfessor(item)}
         accessibilityLabel={`Selecionar professor ${item.name}`}
         accessibilityRole="button"
       >
-        <Text style={[styles.professorText, getConditionalStyle(styles.lightText, styles.darkText)]}>
-          {item.name}
-        </Text>
+        <Text style={styles.itemText}>{item.name}</Text>
         <Ionicons name="chevron-forward" size={24} color="#4caf50" />
       </TouchableOpacity>
     ),
@@ -176,16 +177,14 @@ export default function AlunoVideosScreen() {
   const renderVideoItem = useCallback(
     ({ item }: { item: VideoItem }) => (
       <TouchableOpacity
-        style={[styles.videoItem, getConditionalStyle(styles.lightItem, styles.darkItem)]}
-        onPress={() => openVideo(item.url)}
+        style={styles.itemContainer}
+        onPress={() => openVideo(item.url, item.summary)} // Passa o sumário ao abrir
         accessibilityLabel={`Assistir vídeo ${item.title}`}
         accessibilityRole="button"
       >
         <View style={styles.videoInfo}>
           <Ionicons name="videocam" size={24} color="#4caf50" style={{ marginRight: 10 }} />
-          <Text style={[styles.videoTitle, getConditionalStyle(styles.lightText, styles.darkText)]}>
-            {item.title}
-          </Text>
+          <Text style={styles.itemText}>{item.title}</Text>
         </View>
         <Ionicons name="play-circle-outline" size={30} color="#4caf50" />
       </TouchableOpacity>
@@ -196,9 +195,11 @@ export default function AlunoVideosScreen() {
   const keyExtractorProfessor = useCallback((item: Professor) => item.uid, []);
   const keyExtractorVideo = useCallback((item: VideoItem) => item.id, []);
 
-  const getConditionalStyle = (lightStyle: any, darkStyle: any) => {
-    return darkModeEnabled ? darkStyle : lightStyle;
+  const getStyles = () => {
+    return darkModeEnabled ? darkStyles : lightStyles;
   };
+
+  const styles = getStyles();
 
   const handleBackPress = () => {
     if (selectedProfessor) {
@@ -210,7 +211,7 @@ export default function AlunoVideosScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, getConditionalStyle(styles.lightContainer, styles.darkContainer)]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar
         barStyle={darkModeEnabled ? 'light-content' : 'dark-content'}
         backgroundColor={darkModeEnabled ? '#333' : '#4caf50'}
@@ -274,14 +275,23 @@ export default function AlunoVideosScreen() {
               <Ionicons name="close" size={30} color="#fff" />
             </TouchableOpacity>
             {currentVideoId ? (
-              <YoutubePlayer
-                height={Dimensions.get('window').width * (9 / 16)} // 16:9 Aspect Ratio
-                width={Dimensions.get('window').width - 40}
-                play={true}
-                videoId={currentVideoId}
-                forceAndroidAutoplay={false}
-                webViewStyle={{ opacity: 0.99 }}
-              />
+              <>
+                <YoutubePlayer
+                  height={Dimensions.get('window').width * (9 / 16)} // 16:9 Aspect Ratio
+                  width={Dimensions.get('window').width - 40}
+                  play={true}
+                  videoId={currentVideoId}
+                  forceAndroidAutoplay={false}
+                  webViewStyle={{ opacity: 0.99 }}
+                />
+                {currentVideoSummary ? (
+                  <ScrollView style={styles.modalSummaryContainer}>
+                    <Text style={styles.modalSummaryText}>
+                      {currentVideoSummary}
+                    </Text>
+                  </ScrollView>
+                ) : null}
+              </>
             ) : (
               <ActivityIndicator size="large" color="#4caf50" />
             )}
@@ -292,22 +302,18 @@ export default function AlunoVideosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Definição de estilos separados para temas claro e escuro
+const lightStyles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  lightContainer: {
     backgroundColor: '#fff',
-  },
-  darkContainer: {
-    backgroundColor: '#333',
   },
   content: {
     flex: 1,
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
-  professorItem: {
+  itemContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -316,36 +322,14 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
   },
-  videoItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#eee',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
-  },
-  lightItem: {
-    backgroundColor: '#eee',
-  },
-  darkItem: {
-    backgroundColor: '#555',
-  },
-  professorText: {
+  itemText: {
     fontSize: 16,
+    color: '#333',
   },
   videoInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 1,
-  },
-  videoTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    flexShrink: 1,
-  },
-  listContent: {
-    paddingBottom: 20,
   },
   errorText: {
     color: 'red',
@@ -358,13 +342,9 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 20,
   },
-  darkText: {
-    color: '#fff',
+  listContent: {
+    paddingBottom: 20,
   },
-  lightText: {
-    color: '#333',
-  },
-  // Estilos para o Modal
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
@@ -376,9 +356,89 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     alignItems: 'center',
+    maxHeight: '90%',
+    width: '95%',
   },
   closeButton: {
     alignSelf: 'flex-end',
     padding: 5,
+  },
+  modalSummaryContainer: {
+    marginTop: 10,
+    width: '100%',
+  },
+  modalSummaryText: {
+    fontSize: 14,
+    color: '#fff',
+  },
+});
+
+const darkStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#333',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+  },
+  itemContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#555',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+  },
+  itemText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  videoInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    fontSize: 16,
+  },
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#ccc',
+    marginTop: 20,
+  },
+  listContent: {
+    paddingBottom: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#000',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+    maxHeight: '90%',
+    width: '95%',
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    padding: 5,
+  },
+  modalSummaryContainer: {
+    marginTop: 10,
+    width: '100%',
+  },
+  modalSummaryText: {
+    fontSize: 14,
+    color: '#fff',
   },
 });
