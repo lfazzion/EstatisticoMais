@@ -2,7 +2,7 @@
   "expo": {
     "name": "Estatístico+",
     "slug": "estatistico-plus",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -28,6 +28,9 @@
       "eas": {
         "projectId": "753bca9c-516b-4914-a3ff-6fc84c415f82"
       }
-    }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

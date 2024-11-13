@@ -12,7 +12,8 @@ import {
   StatusBar,
   ActivityIndicator,
   Alert,
-  Linking, // Importando Linking
+  Modal, // Importando Modal
+  Dimensions, // Importando Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -28,6 +29,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types/navigation';
+import YoutubePlayer from 'react-native-youtube-iframe'; // Importando YoutubePlayer
 
 interface VideoItem {
   id: string;
@@ -54,6 +56,10 @@ export default function AlunoVideosScreen() {
   const [loadingVideos, setLoadingVideos] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const { darkModeEnabled } = useContext(ThemeContext);
+
+  // Estados para o Modal de Vídeo
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false);
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null);
 
   // Função para buscar professores
   const fetchProfessors = useCallback(async () => {
@@ -139,17 +145,12 @@ export default function AlunoVideosScreen() {
     }
   };
 
-  // Função para abrir o vídeo no YouTube
-  const openVideoInYouTube = (url: string) => {
+  // Função para abrir o vídeo no Modal
+  const openVideo = (url: string) => {
     const videoId = extractVideoId(url);
     if (videoId) {
-      const youtubeAppUrl = `vnd.youtube://${videoId}`;
-      const youtubeWebUrl = `https://www.youtube.com/watch?v=${videoId}`;
-
-      Linking.openURL(youtubeAppUrl).catch(() => {
-        // Se o aplicativo do YouTube não estiver instalado, abre no navegador
-        Linking.openURL(youtubeWebUrl);
-      });
+      setCurrentVideoId(videoId);
+      setIsModalVisible(true);
     } else {
       Alert.alert('Erro', 'URL do vídeo inválida.');
     }
@@ -176,7 +177,7 @@ export default function AlunoVideosScreen() {
     ({ item }: { item: VideoItem }) => (
       <TouchableOpacity
         style={[styles.videoItem, getConditionalStyle(styles.lightItem, styles.darkItem)]}
-        onPress={() => openVideoInYouTube(item.url)}
+        onPress={() => openVideo(item.url)}
         accessibilityLabel={`Assistir vídeo ${item.title}`}
         accessibilityRole="button"
       >
@@ -254,12 +255,44 @@ export default function AlunoVideosScreen() {
           />
         )}
       </View>
+
+      {/* Modal para exibir o vídeo */}
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsModalVisible(false)}
+              accessibilityLabel="Fechar vídeo"
+              accessibilityRole="button"
+            >
+              <Ionicons name="close" size={30} color="#fff" />
+            </TouchableOpacity>
+            {currentVideoId ? (
+              <YoutubePlayer
+                height={Dimensions.get('window').width * (9 / 16)} // 16:9 Aspect Ratio
+                width={Dimensions.get('window').width - 40}
+                play={true}
+                videoId={currentVideoId}
+                forceAndroidAutoplay={false}
+                webViewStyle={{ opacity: 0.99 }}
+              />
+            ) : (
+              <ActivityIndicator size="large" color="#4caf50" />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  // ... (mantenha os estilos atuais)
   container: {
     flex: 1,
   },
@@ -330,5 +363,22 @@ const styles = StyleSheet.create({
   },
   lightText: {
     color: '#333',
+  },
+  // Estilos para o Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#000',
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    padding: 5,
   },
 });
