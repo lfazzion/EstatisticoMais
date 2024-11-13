@@ -11,6 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      "expo-file-system"
+    ],
     "ios": {
       "supportsTablet": true
     },
@@ -19,7 +22,11 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.lfazzion.EstatisticoMais"
+      "package": "com.lfazzion.EstatisticoMais",
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -28,9 +35,6 @@
       "eas": {
         "projectId": "753bca9c-516b-4914-a3ff-6fc84c415f82"
       }
-    },
-    "plugins": [
-      "expo-asset"
-    ]
+    }
   }
 }
