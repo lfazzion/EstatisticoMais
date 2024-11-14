@@ -1,5 +1,3 @@
-// screens/QuizGameScreen.tsx
-
 import React, { useState, useContext } from 'react';
 import {
   View,
@@ -10,6 +8,9 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
 } from 'react-native';
 import Header from '../components/Header';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -97,19 +98,17 @@ export default function QuizGameScreen() {
   const { darkModeEnabled } = useContext(ThemeContext);
   const navigation = useNavigation<QuizGameNavigationProp>();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(
-    null
-  );
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean>(false);
   const [totalXp, setTotalXp] = useState<number>(0); // Contador de XP total
-  const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState<boolean>(false);
   const [showFinalModal, setShowFinalModal] = useState<boolean>(false);
 
   const currentQuestion = questions[currentQuestionIndex];
 
   // Embaralhar as opções uma vez por pergunta
   const [shuffledOptions, setShuffledOptions] = useState<string[]>([]);
-  const [correctOptionIndex, setCorrectOptionIndex] = useState<number>(0);
+  const [correctOptionIndexShuffled, setCorrectOptionIndexShuffled] = useState<number>(0);
 
   React.useEffect(() => {
     // Embaralhar as opções e atualizar o índice da opção correta
@@ -128,7 +127,7 @@ export default function QuizGameScreen() {
 
     // Atualizar o estado
     setShuffledOptions(options);
-    setCorrectOptionIndex(newCorrectIndex);
+    setCorrectOptionIndexShuffled(newCorrectIndex);
   }, [currentQuestion]);
 
   const handleSubmit = () => {
@@ -137,10 +136,10 @@ export default function QuizGameScreen() {
       return;
     }
 
-    const isCorrect = selectedOptionIndex === correctOptionIndex;
+    const isCorrect = selectedOptionIndex === correctOptionIndexShuffled;
 
     setIsAnswerCorrect(isCorrect);
-    setShowFeedback(true);
+    setShowFeedbackModal(true);
 
     if (isCorrect) {
       updateXP(currentQuestion.xp);
@@ -149,7 +148,7 @@ export default function QuizGameScreen() {
   };
 
   const handleNextQuestion = () => {
-    setShowFeedback(false);
+    setShowFeedbackModal(false);
     setSelectedOptionIndex(null);
 
     if (currentQuestionIndex + 1 < questions.length) {
@@ -208,37 +207,85 @@ export default function QuizGameScreen() {
         >
           {currentQuestion.question}
         </Text>
-        {shuffledOptions.map((option, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.optionButton,
-              selectedOptionIndex === index && styles.selectedOption,
-              showFeedback && index === correctOptionIndex && styles.correctOption,
-              showFeedback &&
-                selectedOptionIndex === index &&
-                selectedOptionIndex !== correctOptionIndex &&
-                styles.incorrectOption,
-              darkModeEnabled ? styles.darkOption : styles.lightOption,
-            ]}
-            onPress={() => {
-              if (!showFeedback) {
-                setSelectedOptionIndex(index);
+        {shuffledOptions.map((option, index) => {
+          // Determinar o estilo da opção com base no feedback
+          let optionStyle: StyleProp<ViewStyle> = [styles.optionButton];
+          let optionTextStyle: StyleProp<TextStyle> = [styles.optionText];
+
+          if (showFeedbackModal) {
+            if (index === correctOptionIndexShuffled) {
+              optionStyle = [...optionStyle, styles.correctOption];
+            } else if (selectedOptionIndex === index) {
+              if (index === correctOptionIndexShuffled) {
+                optionStyle = [...optionStyle, styles.correctOption];
+              } else {
+                optionStyle = [...optionStyle, styles.incorrectOption];
               }
-            }}
-            disabled={showFeedback}
-          >
-            <Text
-              style={[
-                styles.optionText,
-                darkModeEnabled ? styles.darkText : styles.lightText,
-              ]}
+            } else {
+              // Aplicar estilos padrão para as demais opções
+              optionStyle = [
+                ...optionStyle,
+                darkModeEnabled ? styles.darkOption : styles.lightOption,
+              ];
+            }
+          } else {
+            // Estilos normais e seleção
+            optionStyle = [
+              ...optionStyle,
+              darkModeEnabled ? styles.darkOption : styles.lightOption,
+              selectedOptionIndex === index && styles.selectedOption,
+            ];
+          }
+
+          // Determinar a cor do texto
+          if (darkModeEnabled) {
+            if (showFeedbackModal) {
+              if (index === correctOptionIndexShuffled) {
+                // Opção correta: texto preto
+                optionTextStyle = [...optionTextStyle, styles.blackText];
+              } else if (selectedOptionIndex === index) {
+                if (index === correctOptionIndexShuffled) {
+                  // Opção correta selecionada: texto preto
+                  optionTextStyle = [...optionTextStyle, styles.blackText];
+                } else {
+                  // Opção incorreta selecionada: texto vermelho
+                  optionTextStyle = [...optionTextStyle, styles.redText];
+                }
+              } else {
+                // Texto padrão para as demais opções no modo escuro
+                optionTextStyle = [...optionTextStyle, styles.darkText];
+              }
+            } else {
+              if (selectedOptionIndex === index) {
+                // Opção selecionada no modo escuro: texto preto
+                optionTextStyle = [...optionTextStyle, styles.blackText];
+              } else {
+                // Texto padrão no modo escuro
+                optionTextStyle = [...optionTextStyle, styles.darkText];
+              }
+            }
+          } else {
+            // Modo claro: manter estilos existentes
+            optionTextStyle = [...optionTextStyle, styles.lightText];
+          }
+
+          return (
+            <TouchableOpacity
+              key={index}
+              style={optionStyle}
+              onPress={() => {
+                if (!showFeedbackModal) {
+                  setSelectedOptionIndex(index);
+                }
+              }}
+              disabled={showFeedbackModal}
             >
-              {option}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        {!showFeedback ? (
+              <Text style={optionTextStyle}>{option}</Text>
+            </TouchableOpacity>
+          );
+        })}
+        {/* Botão Enviar apenas quando o feedback não está sendo mostrado */}
+        {!showFeedbackModal && (
           <TouchableOpacity
             style={[
               styles.button,
@@ -248,18 +295,55 @@ export default function QuizGameScreen() {
           >
             <Text style={styles.buttonText}>Enviar</Text>
           </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[
-              styles.button,
-              darkModeEnabled ? styles.darkButton : styles.lightButton,
-            ]}
-            onPress={handleNextQuestion}
-          >
-            <Text style={styles.buttonText}>Continuar</Text>
-          </TouchableOpacity>
         )}
       </View>
+
+      {/* Modal de Feedback */}
+      <Modal
+        visible={showFeedbackModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowFeedbackModal(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View
+            style={[
+              styles.feedbackModalContainer,
+              darkModeEnabled ? styles.darkModal : styles.lightModal,
+            ]}
+          >
+            <Text
+              style={[
+                styles.modalTitle,
+                darkModeEnabled ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {isAnswerCorrect ? 'Correto!' : 'Incorreto'}
+            </Text>
+            <Text
+              style={[
+                styles.modalMessage,
+                darkModeEnabled ? styles.darkText : styles.lightText,
+              ]}
+            >
+              {isAnswerCorrect
+                ? `Você ganhou ${currentQuestion.xp} XP!`
+                : `A resposta correta era: ${
+                    shuffledOptions[correctOptionIndexShuffled]
+                  }`}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                darkModeEnabled ? styles.darkButton : styles.lightButton,
+              ]}
+              onPress={handleNextQuestion}
+            >
+              <Text style={styles.modalButtonText}>Continuar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Final */}
       <Modal
@@ -342,16 +426,18 @@ const styles = StyleSheet.create({
     padding: 15,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: 'transparent',
   },
   lightOption: {
     backgroundColor: '#eee',
+    borderColor: 'transparent',
   },
   darkOption: {
     backgroundColor: '#1e1e1e',
+    borderColor: 'transparent',
   },
   selectedOption: {
     borderColor: '#4caf50',
+    backgroundColor: '#dcedc8',
   },
   correctOption: {
     backgroundColor: '#c8e6c9', // Verde claro
@@ -370,6 +456,12 @@ const styles = StyleSheet.create({
   lightText: {
     color: '#333',
   },
+  blackText: {
+    color: '#000', // Preto
+  },
+  redText: {
+    color: '#ff0000', // Vermelho
+  },
   button: {
     borderRadius: 8,
     padding: 15,
@@ -386,7 +478,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
   },
-  // Estilos do Modal
+  // Estilos do Modal de Feedback
+  feedbackModalContainer: {
+    width: '80%',
+    borderRadius: 8,
+    padding: 20,
+    alignItems: 'center',
+  },
+  // Estilos do Modal Final
   modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

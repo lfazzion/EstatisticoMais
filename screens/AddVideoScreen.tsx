@@ -77,8 +77,8 @@ export default function AddVideoScreen() {
     }
 
     // Limite de caracteres para summary
-    if (summary.trim().length > 1000) { // Exemplo de limite
-      newError.general = 'O sumário não pode exceder 1000 caracteres.';
+    if (summary.trim().length > 5000) { // Atualizado para 5000 caracteres
+      newError.general = 'O sumário não pode exceder 5000 caracteres.';
       valid = false;
     }
 
@@ -167,6 +167,7 @@ export default function AddVideoScreen() {
             value={videoTitle}
             editable={!loading}
             accessibilityLabel="Campo para inserir o título do vídeo"
+            // Nenhuma restrição adicional necessária para suportar caracteres em português
           />
           {error.title && <Text style={styles.errorText}>{error.title}</Text>}
 
@@ -234,6 +235,7 @@ export default function AddVideoScreen() {
             value={summary}
             editable={!loading}
             accessibilityLabel="Campo para inserir o sumário ou transcrição do vídeo"
+            // Nenhuma restrição adicional necessária para suportar caracteres em português
           />
 
           {/* Exibição de mensagens de erro ou um indicador de carregamento */}
