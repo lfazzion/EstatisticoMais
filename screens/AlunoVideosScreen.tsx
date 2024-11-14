@@ -135,14 +135,11 @@ export default function AlunoVideosScreen() {
     const regex = /(?:\?v=|\/embed\/|\.be\/)([a-zA-Z0-9_-]{11})/;
     const match = url.match(regex);
     if (match && match[1]) {
-      console.log('Video ID extraído:', match[1]);
       return match[1];
     } else if (url.length === 11) {
       // Se o usuário inseriu apenas o ID do vídeo
-      console.log('Video ID é o próprio URL:', url);
       return url;
     } else {
-      console.log('Falha ao extrair o Video ID da URL:', url);
       return null;
     }
   };

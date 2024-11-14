@@ -38,9 +38,13 @@ export default function ReadingMaterialsScreen() {
     {
       id: '1',
       title: 'Introdução à Estatística',
-      asset: require('../assets/pdfs/estatistica.pdf'),
+      asset: require('../assets/pdfs/Livro-Introdução-a-Estatística.pdf'),
     },
-    // Adicione mais materiais conforme necessário
+    {
+      id: '2',
+      title: 'Estatística e Probabilidade',
+      asset: require('../assets/pdfs/Livro-Estatística-e-Probabilidade.pdf'),
+    },
   ];
 
   useEffect(() => {
@@ -55,7 +59,6 @@ export default function ReadingMaterialsScreen() {
 
             // Verifica se o arquivo já foi copiado para evitar cópias repetidas
             const fileInfo = await FileSystem.getInfoAsync(fileUri);
-            console.log(`Arquivo existe para ${material.title}:`, fileInfo.exists);
             if (!fileInfo.exists) {
               await FileSystem.copyAsync({
                 from: asset.localUri || asset.uri,
@@ -65,7 +68,6 @@ export default function ReadingMaterialsScreen() {
 
             // Normaliza a URI para garantir que comece com 'file://'
             const normalizedUri = fileUri.startsWith('file://') ? fileUri : `file://${fileUri}`;
-            console.log(`URI do PDF para ${material.title}:`, normalizedUri);
 
             return { ...material, uri: normalizedUri };
           })
@@ -147,14 +149,7 @@ export default function ReadingMaterialsScreen() {
               Alert.alert('Erro', 'Não foi possível carregar o PDF.');
               setSelectedMaterial(null);
             }}
-            onLoadComplete={(numberOfPages, filePath) => {
-              console.log(`Número de páginas: ${numberOfPages}`);
-            }}
-            onPageChanged={(page, numberOfPages) => {
-              console.log(`Página ${page} de ${numberOfPages}`);
-            }}
             enablePaging={true}
-            // Adicione outras propriedades conforme necessário
           />
         </View>
       ) : (
